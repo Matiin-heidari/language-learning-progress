@@ -1,0 +1,43 @@
+{% macro progress_ring(pct, size=56, stroke=6, color_var='--accent', label='') %}
+{% set radius = (size / 2) - (stroke / 2) %}
+{% set circumference = 2 * 3.14159265 * radius %}
+{% set offset = circumference * (1 - (pct / 100)) %}
+<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 {{ size }} {{ size }}" class="level-ring" role="img" aria-label="{{ label }}">
+  <circle cx="{{ size / 2 }}" cy="{{ size / 2 }}" r="{{ radius }}" fill="none" stroke="var(--surface-2)" stroke-width="{{ stroke }}" />
+  <circle
+    cx="{{ size / 2 }}" cy="{{ size / 2 }}" r="{{ radius }}" fill="none"
+    stroke="var({{ color_var }})" stroke-width="{{ stroke }}"
+    stroke-linecap="round"
+    stroke-dasharray="{{ '%.2f'|format(circumference) }}"
+    stroke-dashoffset="{{ '%.2f'|format(offset) }}"
+    transform="rotate(-90 {{ size / 2 }} {{ size / 2 }})"
+    style="transition: stroke-dashoffset var(--dur-slow) var(--ease);"
+  />
+  <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" font-size="{{ size * 0.28 }}" font-weight="700" fill="var(--text-primary)">{{ pct|round(0)|int }}%</text>
+</svg>
+{% endmacro %}
+
+{% macro stat_tile(icon_name, icon_class, value, label, delta=None, at_risk=False) %}
+{% from "macros/icons.html" import icon %}
+<div class="stat-tile">
+  <div class="stat-icon {{ icon_class }}">{{ icon(icon_name, size=17, class_='flame-atrisk' if at_risk else '') }}</div>
+  <div class="stat-value">{{ value }}{% if delta %}<span class="stat-delta {{ 'up' if delta > 0 else 'down' }}">{{ '▲' if delta > 0 else '▼' }} {{ delta|abs }}%</span>{% endif %}</div>
+  <div class="stat-label">{{ label }}</div>
+</div>
+{% endmacro %}
+
+{% macro minutes_label(minutes) %}
+{%- if minutes >= 60 -%}
+  {{ (minutes // 60) }}h{% if minutes % 60 %} {{ '%02d'|format(minutes % 60) }}m{% endif %}
+{%- else -%}
+  {{ minutes }}m
+{%- endif -%}
+{% endmacro %}
+
+{% macro hours_label(minutes, decimals=1) -%}
+  {%- if decimals == 0 -%}
+    {{ '%.0f'|format(minutes / 60) }}
+  {%- else -%}
+    {{ '%.1f'|format(minutes / 60) }}
+  {%- endif -%}
+{%- endmacro %}

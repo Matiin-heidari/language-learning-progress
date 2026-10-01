@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% from "macros/icons.html" import icon %}
+{% from "macros/ui.html" import progress_ring, minutes_label, hours_label %}
+{% from "macros/forms.html" import csrf_input %}
+
+{% block title %}Dashboard · Sprachweg{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow">{{ today.strftime('%A, %d %B %Y') }}</div>
+    <h1>Guten Tag 👋</h1>
+  </div>
+</div>
+
+<!-- Hero: Road to goal -->
+<div class="card hero-card">
+  <div class="hero-top">
+    <div>
+      <div class="eyebrow">Road to {{ progress.goal_level.code if progress.goal_level else '?' }}</div>
+      <div class="hero-number">
+        <span data-count-to="{{ '%.1f'|format(progress.total_minutes / 60) }}" data-count-decimals="1" data-count-display="{{ '%.1f'|format(progress.total_minutes / 60) }}">0</span>
+        <span class="unit">/ {{ '%.0f'|format(progress.goal_minutes / 60) }} h</span>
+      </div>
+      {% if eta.goal_date %}
+      <div class="hero-sub">At your 4-week pace ({{ minutes_label(eta.pace_minutes_per_day|round|int) }}/day), {{ progress.goal_level.code if progress.goal_level else 'goal' }} by <strong>{{ eta.goal_date.strftime('%b %Y') }}</strong></div>
+      {% elif progress.is_goal_reached %}
+      <div class="hero-sub" style="color:var(--good); font-weight:600;">🎉 Goal reached! {{ progress.overflow_minutes // 60 }}h beyond {{ progress.goal_level.code if progress.goal_level else '' }} — consider setting a new goal.</div>
+      {% else %}
+      <div class="hero-sub">Log a few sessions to see your projected {{ progress.goal_level.code if progress.goal_level else 'goal' }} date.</div>
+      {% endif %}
+    </div>
+    <div style="text-align:right;">
+      <div class="hero-pct">{{ progress.total_pct|round(0)|int }}%</div>
+      <button class="info-link" onclick="document.getElementById('estimate-info').classList.toggle('hidden')">ⓘ how estimated</button>
+    </div>
+  </div>
+
+  <div id="estimate-info" class="hidden mt-16" style="font-size:13px; color:var(--text-secondary); background:var(--surface-2); padding:12px; border-radius:var(--radius-md);">
+    Hour targets are based on Goethe-Institut course guidance, the FSI German estimate, and Cambridge guided-learning-hour figures — adjusted for a Persian-speaking, English-fluent learner (shared vocabulary with English helps; grammatical gender & cases are the main extra hurdle). Fully editable in Settings.
+  </div>
+
+  {% set ns = namespace(hours_before=0) %}
+  <div class="segbar">
+    <div class="segbar-track-wrap">
+      <div class="segbar-track">
+        {% for lp in progress.levels %}
+        <div class="segbar-seg {{ 'done' if lp.status == 'done' }}" style="flex-grow: {{ lp.level.target_hours }};">
+          <div class="segbar-fill" style="width: {{ lp.pct }}%;"></div>
+        </div>
+        {% endfor %}
+      </div>
+      {% if progress.current_level %}
+      {% for lp in progress.levels %}
+        {% if lp.status == 'current' %}
+        <div class="you-are-here" style="left: {{ ((ns.hours_before + (lp.filled_minutes / 60)) / (progress.goal_minutes / 60) * 100) if progress.goal_minutes else 0 }}%;">You</div>
+        {% endif %}
+        {% set ns.hours_before = ns.hours_before + lp.level.target_hours|float %}
+      {% endfor %}
+      {% endif %}
+    </div>
+    <div class="segbar-labels">
+      {% for lp in progress.levels %}
+      <span style="flex-grow: {{ lp.level.target_hours }};">{{ lp.level.code }}</span>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Stat tiles -->
+<div class="stat-tiles mt-16">
+  <div class="stat-tile">
+    <div class="stat-icon icon-flame">{{ icon('flame', size=17, class_='flame-atrisk' if streaks.at_risk else '') }}</div>
+    <div class="stat-value">{{ streaks.current_streak }}</div>
+    <div class="stat-label">{% if streaks.at_risk %}days — study today to keep it!{% else %}day streak{% endif %}</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-icon icon-trophy">{{ icon('trophy', size=17) }}</div>
+    <div class="stat-value">{{ streaks.longest_streak }}</div>
+    <div class="stat-label">longest streak</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-icon icon-clock">{{ icon('clock', size=17) }}</div>
+    <div class="stat-value">{{ hours_label(this_week_minutes) }}h{% if week_delta_pct is not none %}<span class="stat-delta {{ 'up' if week_delta_pct >= 0 else 'down' }}">{{ '▲' if week_delta_pct >= 0 else '▼' }}{{ week_delta_pct|abs }}%</span>{% endif %}</div>
+    <div class="stat-label">this week</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-icon icon-check">{{ icon('circle-check', size=17) }}</div>
+    <div class="stat-value">{{ adherence|round|int if adherence is not none else '—' }}{% if adherence is not none %}%{% endif %}</div>
+    <div class="stat-label">plan adherence (7d)</div>
+  </div>
+</div>
+
+<!-- Level cards -->
+<div class="card mt-16">
+  <div class="card-title">Levels</div>
+  <div class="level-row">
+    {% for lp in progress.levels %}
+    <div class="level-card {{ 'current' if lp.status == 'current' }}" onclick="this.classList.toggle('expanded')">
+      <div class="level-code">{{ lp.level.code }}</div>
+      <div class="level-name">{{ lp.level.name }}</div>
+      {{ progress_ring(lp.pct, size=64, stroke=6, color_var='--good' if lp.status == 'done' else '--accent', label=lp.level.code + ' progress') }}
+      <div class="level-hours">{{ hours_label(lp.filled_minutes) }} / {{ '%.0f'|format(lp.level.target_hours) }} h</div>
+      <span class="level-status-chip {{ lp.status }}">
+        {% if lp.status == 'done' %}{{ icon('circle-check', size=11) }} Done
+        {% elif lp.status == 'current' %}● Current
+        {% else %}🔒 Locked{% endif %}
+      </span>
+      {% if lp.status == 'current' %}
+      <form
+        method="post"
+        action="{{ url_for('dashboard.mark_complete', level_id=lp.level.id) }}"
+        onclick="event.stopPropagation();"
+        onsubmit="return confirm('Mark {{ lp.level.code }} as complete? This logs {{ hours_label(lp.remaining_minutes) }}h of catch-up time (split across this level\'s skills) so your total stays accurate -- you can edit or delete it afterward from the Log page.');"
+        class="mt-8"
+      >
+        {{ csrf_input() }}
+        <button type="submit" class="btn btn-ghost btn-sm w-full">I passed {{ lp.level.code }} ✓</button>
+      </form>
+      {% endif %}
+      <div class="skill-bars">
+        {% for skill in lp.skills.values() %}
+        <div class="skill-bar-row">
+          <span class="skill-icon" style="color: var(--series-{{ skill.activity_type.color_slot }});">{{ icon(skill.activity_type.icon, size=14) }}</span>
+          <div class="skill-bar-track"><div class="skill-bar-fill" style="width:{{ skill.pct }}%; background: var(--series-{{ skill.activity_type.color_slot }});"></div></div>
+          <span class="skill-bar-value">{{ hours_label(skill.earned_minutes) }}/{{ hours_label(skill.target_minutes) }}h</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="grid grid-dashboard mt-16">
+  <!-- Today's plan -->
+  <div class="card">
+    <div class="card-title">
+      Today's plan
+      <a href="{{ url_for('plan.index') }}" class="info-link">Edit plan</a>
+    </div>
+    {% if not active_plan %}
+    <div class="empty-state">
+      {{ icon('calendar-check') }}
+      <p>No plan yet.</p>
+      <a href="{{ url_for('plan.index') }}" class="btn btn-primary mt-16">Suggest a plan</a>
+    </div>
+    {% elif not today_items %}
+    <div class="empty-state">
+      {{ icon('sparkles') }}
+      <p>Nothing scheduled today. Enjoy the rest, or log an ad-hoc session.</p>
+    </div>
+    {% else %}
+    <div id="today-plan-list">
+      {% for item in today_items %}
+        {% include "partials/plan_item.html" %}
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Heatmap -->
+  <div class="card">
+    <div class="card-title">
+      Activity — last 12 months
+      <span class="text-muted" style="text-transform:none; font-weight:500;">{{ heatmap.total_active_days }} active days</span>
+    </div>
+    {% include "partials/heatmap.html" %}
+  </div>
+</div>
+
+<!-- Recent sessions -->
+<div class="card mt-16">
+  <div class="card-title">
+    Recent sessions
+    <a href="{{ url_for('log.index') }}" class="info-link">View all</a>
+  </div>
+  {% if not recent_sessions %}
+  <div class="empty-state">
+    {{ icon('book-marked') }}
+    <p>No sessions logged yet.</p>
+    <button class="btn btn-primary mt-16" hx-get="{{ url_for('log.new_session') }}" hx-target="#modal-root" hx-swap="innerHTML">Log your first session</button>
+  </div>
+  {% else %}
+  {% for s in recent_sessions %}
+  <div class="plan-item-row">
+    <div class="plan-item-icon" style="background: var(--series-{{ s.activity_type.color_slot }});">{{ icon(s.activity_type.icon, size=16) }}</div>
+    <div class="plan-item-body">
+      <div class="plan-item-title">{{ s.activity_type.name }}{% if s.resource %} · {{ s.resource }}{% endif %}</div>
+      <div class="plan-item-meta">
+        {{ s.study_date.strftime('%a, %d %b') }} · {{ minutes_label(s.minutes) }}{% if s.note %} · {{ s.note }}{% endif %}
+      </div>
+    </div>
+    <div class="plan-item-actions">
+      <a href="{{ url_for('log.edit_session', session_id=s.id) }}" class="status-btn">{{ icon('pencil', size=14) }}</a>
+      <button
+        class="status-btn"
+        hx-post="{{ url_for('log.delete_session', session_id=s.id) }}"
+        hx-confirm="Delete this session?"
+        hx-target="closest .plan-item-row"
+        hx-swap="outerHTML swap:200ms"
+      >{{ icon('trash-2', size=14) }}</button>
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}

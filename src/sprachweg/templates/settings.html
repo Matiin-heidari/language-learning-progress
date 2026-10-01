@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% from "macros/forms.html" import csrf_input %}
+{% from "macros/icons.html" import icon %}
+
+{% block title %}Settings · Sprachweg{% endblock %}
+
+{% block content %}
+<div class="page-header"><h1>Settings</h1></div>
+
+<div class="card">
+  <div class="card-title">Account — @{{ current_user.username }}</div>
+  <form method="post" action="{{ url_for('settings.update_general') }}" class="grid grid-2">
+    {{ csrf_input() }}
+    <div class="field">
+      <label>Display name</label>
+      <input type="text" name="display_name" value="{{ current_user.display_name }}">
+    </div>
+    <div class="field">
+      <label>Timezone (IANA name)</label>
+      <input type="text" name="timezone" value="{{ current_user.timezone }}" placeholder="Europe/Berlin">
+    </div>
+    <div class="field">
+      <label>Week starts on</label>
+      <select name="week_start">
+        <option value="mon" {{ 'selected' if current_user.week_start == 'mon' }}>Monday</option>
+        <option value="sun" {{ 'selected' if current_user.week_start == 'sun' }}>Sunday</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Theme</label>
+      <select name="theme">
+        <option value="system" {{ 'selected' if current_user.theme == 'system' }}>System</option>
+        <option value="light" {{ 'selected' if current_user.theme == 'light' }}>Light</option>
+        <option value="dark" {{ 'selected' if current_user.theme == 'dark' }}>Dark</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Streak threshold (min minutes/day)</label>
+      <input type="number" name="streak_min_minutes" value="{{ current_user.streak_min_minutes }}" min="1" max="240">
+    </div>
+    <div class="field">
+      <label>Daily goal (minutes)</label>
+      <input type="number" name="daily_goal_minutes" value="{{ current_user.daily_goal_minutes }}" min="5" max="960">
+    </div>
+    <label class="flex items-center gap-8" style="grid-column: 1 / -1; cursor:pointer;">
+      <input type="checkbox" name="is_public" {{ 'checked' if current_user.is_public }} style="width:auto;">
+      Let other users see my profile (heatmap &amp; streak) and appear on the leaderboard
+    </label>
+    <button type="submit" class="btn btn-primary" style="grid-column: 1 / -1;">Save</button>
+  </form>
+
+  <form method="post" action="{{ url_for('settings.change_password') }}" class="grid grid-2 mt-24" style="border-top: 1px solid var(--border); padding-top: 20px;">
+    {{ csrf_input() }}
+    <div class="field" style="grid-column: 1 / -1;"><strong>Change password</strong></div>
+    <div class="field">
+      <label>Current password</label>
+      <input type="password" name="current_password" required>
+    </div>
+    <div></div>
+    <div class="field">
+      <label>New password</label>
+      <input type="password" name="new_password" minlength="8" required>
+    </div>
+    <div class="field">
+      <label>Confirm new password</label>
+      <input type="password" name="confirm_password" minlength="8" required>
+    </div>
+    <button type="submit" class="btn btn-secondary" style="grid-column: 1 / -1;">Update password</button>
+  </form>
+</div>
+
+<div class="card mt-16">
+  <div class="card-title">Levels &amp; hour targets — {{ language.name }}</div>
+  {% for level in levels %}
+  <div class="flex items-center gap-12 mt-8">
+    <form method="post" action="{{ url_for('settings.update_level', level_id=level.id) }}" class="flex items-center gap-12" style="flex:1;">
+      {{ csrf_input() }}
+      <strong style="width:36px;">{{ level.code }}</strong>
+      <span class="text-muted" style="width:160px;">{{ level.name }}</span>
+      <input type="number" name="target_hours" value="{{ level.target_hours }}" min="1" step="1" style="max-width:120px;"> h
+      <button type="submit" class="btn btn-secondary btn-sm">Save</button>
+    </form>
+    <form method="post" action="{{ url_for('settings.mark_exam_passed', level_id=level.id) }}" style="display:inline-flex; gap:6px; align-items:center;">
+      {{ csrf_input() }}
+      <input type="date" name="date" style="max-width:150px;">
+      <button type="submit" class="btn btn-ghost btn-sm">Mark exam passed</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="card mt-16">
+  <div class="card-title">Activity types</div>
+  {% for a in activities %}
+  <div class="flex items-center gap-12 mt-8">
+    <span class="dot" style="width:10px; height:10px; border-radius:50%; background: var(--series-{{ a.color_slot }});"></span>
+    {{ icon(a.icon, size=15) }}
+    <span style="flex:1;">{{ a.name }}{% if a.is_archived %} <span class="text-muted">(archived)</span>{% endif %}</span>
+    {% if not a.is_archived %}
+    <form method="post" action="{{ url_for('settings.archive_activity', activity_id=a.id) }}">
+      {{ csrf_input() }}
+      <button type="submit" class="btn btn-ghost btn-sm">Archive</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+  <form method="post" action="{{ url_for('settings.add_activity') }}" class="grid grid-2 mt-16">
+    {{ csrf_input() }}
+    <input type="text" name="key" placeholder="key (e.g. tutor)" required>
+    <input type="text" name="name" placeholder="Name (e.g. Tutor session)" required>
+    <input type="text" name="icon" placeholder="lucide icon name (optional)">
+    <button type="submit" class="btn btn-secondary">Add activity type</button>
+  </form>
+</div>
+
+<div class="card mt-16">
+  <div class="card-title">Languages</div>
+  {% for lang in languages %}
+  <div class="flex items-center gap-12 mt-8">
+    <span>{{ lang.flag_emoji }} {{ lang.name }}</span>
+    {% if not lang.is_active %}<span class="text-muted">(archived)</span>{% endif %}
+    {% if lang.is_active %}
+    <form method="post" action="{{ url_for('settings.archive_language', language_id=lang.id) }}" style="margin-left:auto;">
+      {{ csrf_input() }}
+      <button type="submit" class="btn btn-ghost btn-sm">Archive</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+  <form method="post" action="{{ url_for('settings.add_language') }}" class="grid grid-2 mt-16">
+    {{ csrf_input() }}
+    <input type="text" name="code" placeholder="code (e.g. es)" maxlength="8" required>
+    <input type="text" name="name" placeholder="Name (e.g. Spanish)" required>
+    <input type="text" name="native_name" placeholder="Native name (optional)">
+    <input type="text" name="flag_emoji" placeholder="Flag emoji (optional)">
+    <button type="submit" class="btn btn-secondary" style="grid-column: 1 / -1;">Add language</button>
+  </form>
+</div>
+
+<div class="card mt-16">
+  <div class="card-title">Data</div>
+  <div class="flex gap-8">
+    <a href="{{ url_for('settings.export_json') }}" class="btn btn-secondary">{{ icon('download', size=14) }} Export JSON</a>
+    <a href="{{ url_for('log.export_csv') }}" class="btn btn-secondary">{{ icon('download', size=14) }} Export CSV</a>
+  </div>
+  <form method="post" action="{{ url_for('settings.import_json') }}" enctype="multipart/form-data" class="flex gap-8 mt-16">
+    {{ csrf_input() }}
+    <input type="file" name="file" accept="application/json">
+    <button type="submit" class="btn btn-secondary">{{ icon('upload', size=14) }} Import JSON</button>
+  </form>
+</div>
+{% endblock %}

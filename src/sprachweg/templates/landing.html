@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sprachweg — track your language-learning hours</title>
+  <meta name="description" content="Plan, log and see your progress toward fluency — hour by hour, day by day.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🇩🇪</text></svg>">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <style>
+    .landing-nav {
+      display: flex; align-items: center; justify-content: space-between;
+      max-width: 1100px; margin: 0 auto; padding: 20px 16px;
+    }
+    .landing-hero {
+      max-width: 1100px; margin: 0 auto; padding: 48px 16px 24px;
+      display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center;
+    }
+    @media (max-width: 900px) { .landing-hero { grid-template-columns: 1fr; padding-top: 24px; } }
+    .landing-hero h1 {
+      font-family: var(--font-display); font-size: clamp(32px, 5vw, 52px);
+      line-height: 1.08; font-weight: 600; letter-spacing: -0.01em;
+    }
+    .landing-hero .accent { color: var(--accent); }
+    .landing-sub { font-size: 17px; color: var(--text-secondary); margin-top: 16px; max-width: 46ch; }
+    .landing-cta { display: flex; gap: 12px; margin-top: 28px; flex-wrap: wrap; }
+    .landing-trust { margin-top: 18px; font-size: 13px; color: var(--text-muted); }
+
+    .mock-card {
+      background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-raised); padding: 20px; transform: rotate(-1deg);
+    }
+    .mock-bar-track { height: 14px; border-radius: var(--radius-pill); background: var(--surface-2); overflow: hidden; display: flex; gap: 2px; }
+    .mock-bar-track .seg { background: var(--surface-2); flex: 1; }
+    .mock-bar-track .seg.fill { background: var(--good); }
+    .mock-bar-track .seg.fill.partial { background: var(--accent); }
+    .mock-heat { display: grid; grid-template-columns: repeat(18, 1fr); gap: 3px; margin-top: 14px; }
+    .mock-heat .cell { aspect-ratio: 1; border-radius: 2px; }
+    .mock-stat-row { display: flex; gap: 10px; margin-top: 16px; }
+    .mock-stat { flex: 1; background: var(--surface-2); border-radius: var(--radius-md); padding: 10px; }
+    .mock-stat .n { font-family: var(--font-display); font-size: 20px; font-weight: 700; }
+    .mock-stat .l { font-size: 11px; color: var(--text-muted); }
+
+    .features {
+      max-width: 1100px; margin: 24px auto 0; padding: 32px 16px;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+    }
+    @media (max-width: 900px) { .features { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .features { grid-template-columns: 1fr; } }
+    .feature-card { padding: 20px; }
+    .feature-icon {
+      width: 38px; height: 38px; border-radius: var(--radius-sm);
+      background: var(--accent-soft); color: var(--accent-strong, var(--accent));
+      display: flex; align-items: center; justify-content: center; margin-bottom: 12px;
+    }
+    .feature-card h3 { font-size: 15px; margin-bottom: 6px; }
+    .feature-card p { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+
+    .landing-section-title {
+      text-align: center; font-family: var(--font-display); font-size: 26px; margin: 48px 0 8px;
+    }
+    .landing-section-sub { text-align: center; color: var(--text-muted); font-size: 14px; margin-bottom: 8px; }
+
+    .cta-band {
+      max-width: 1100px; margin: 48px auto; padding: 40px 24px; text-align: center;
+      background: linear-gradient(135deg, var(--accent-soft), var(--surface-1));
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+    }
+    .cta-band h2 { font-family: var(--font-display); font-size: 24px; }
+
+    footer { text-align: center; padding: 32px 16px; color: var(--text-muted); font-size: 13px; }
+  </style>
+</head>
+<body>
+  <nav class="landing-nav">
+    <span class="brand">
+      <span class="brand-mark">🇩🇪</span>
+      <span>Sprachweg</span>
+    </span>
+    <div class="flex gap-8">
+      <a href="{{ url_for('auth.login') }}" class="btn btn-ghost">Log in</a>
+      <a href="{{ url_for('auth.signup') }}" class="btn btn-primary">Sign up free</a>
+    </div>
+  </nav>
+
+  <section class="landing-hero">
+    <div>
+      <h1>See your language progress, <span class="accent">hour by hour.</span></h1>
+      <p class="landing-sub">
+        Plan your study week, log every vocab drill and conversation, and watch a real, honest
+        progress bar move from A1 toward fluency. Streaks, a GitHub-style activity heatmap, and
+        a leaderboard keep you coming back.
+      </p>
+      <div class="landing-cta">
+        <a href="{{ url_for('auth.signup') }}" class="btn btn-primary">Start tracking — it's free</a>
+        <a href="{{ url_for('auth.login') }}" class="btn btn-secondary">I have an account</a>
+      </div>
+      <p class="landing-trust">No credit card. Built for German A1→C1, with more languages on the way.</p>
+    </div>
+
+    <div class="mock-card" aria-hidden="true">
+      <div class="eyebrow">Road to C1</div>
+      <div style="font-family:var(--font-display); font-size:30px; font-weight:600;">312.5 <span style="font-size:14px; color:var(--text-muted); font-weight:500;">/ 1200 h</span></div>
+      <div class="mock-bar-track mt-16">
+        <div class="seg fill" style="flex-grow:120;"></div>
+        <div class="seg fill partial" style="flex-grow:40;"></div>
+        <div class="seg" style="flex-grow:240;"></div>
+        <div class="seg" style="flex-grow:300;"></div>
+        <div class="seg" style="flex-grow:380;"></div>
+      </div>
+      <div class="mock-stat-row">
+        <div class="mock-stat"><div class="n">🔥 23</div><div class="l">day streak</div></div>
+        <div class="mock-stat"><div class="n">A2</div><div class="l">current level</div></div>
+        <div class="mock-stat"><div class="n">#2</div><div class="l">on leaderboard</div></div>
+      </div>
+      <div class="mock-heat">
+        {% for i in range(72) %}
+        {% set r = (i * 37 + 11) % 100 %}
+        <div class="cell" style="background: {{ 'var(--heat-' ~ ((r % 5) + 1) ~ ')' if r > 25 else 'var(--heat-0)' }};"></div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <h2 class="landing-section-title">Everything to keep you honest</h2>
+  <p class="landing-section-sub">No fluff — just the numbers that show you're actually improving.</p>
+
+  <section class="features">
+    <div class="card feature-card">
+      <div class="feature-icon">📊</div>
+      <h3>Research-based targets</h3>
+      <p>Hour estimates for A1→C1 based on Goethe-Institut and FSI guidance, fully editable to fit you.</p>
+    </div>
+    <div class="card feature-card">
+      <div class="feature-icon">🔥</div>
+      <h3>Streaks that stick</h3>
+      <p>Current streak, longest streak, and an "at risk" nudge so you never lose momentum.</p>
+    </div>
+    <div class="card feature-card">
+      <div class="feature-icon">🗓️</div>
+      <h3>Weekly plans</h3>
+      <p>Build a weekly study plan by skill, or set one universal daily plan and apply it everywhere.</p>
+    </div>
+    <div class="card feature-card">
+      <div class="feature-icon">🏆</div>
+      <h3>Compete with friends</h3>
+      <p>See anyone's heatmap and streak by username, and check the leaderboard for who studied most today.</p>
+    </div>
+  </section>
+
+  <div class="cta-band">
+    <h2>Your first session takes 10 seconds to log.</h2>
+    <p class="text-secondary mt-8">Create a free account and start your streak today.</p>
+    <a href="{{ url_for('auth.signup') }}" class="btn btn-primary mt-16">Sign up free</a>
+  </div>
+
+  <footer>Sprachweg — a personal language-learning tracker.</footer>
+
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('sprachweg-theme');
+        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+</body>
+</html>

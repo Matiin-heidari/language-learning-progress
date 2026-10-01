@@ -1,0 +1,50 @@
+{% from "macros/icons.html" import icon %}
+{% from "macros/ui.html" import minutes_label %}
+{% set is_missed = item.status.value == 'pending' and item.date < app_today %}
+<div id="plan-item-{{ item.id }}" class="plan-item-row status-{{ item.status.value }}{{ ' status-missed' if is_missed }}">
+  <div class="plan-item-icon" style="background: var(--series-{{ item.activity_type.color_slot }});">
+    {{ icon(item.activity_type.icon, size=16) }}
+  </div>
+  <div class="plan-item-body">
+    <div class="plan-item-title">{{ item.title or item.activity_type.name }}</div>
+    <div class="plan-item-meta">
+      {% if is_missed %}Missed ·{% endif %}
+      {{ minutes_label(item.planned_minutes) }} planned
+      {%- if item.session %} · logged {{ minutes_label(item.session.minutes) }}{% endif %}
+    </div>
+  </div>
+  <div class="plan-item-actions">
+    <button
+      class="status-btn done-btn {{ 'active' if item.status.value == 'done' }}"
+      title="Mark done"
+      hx-post="{{ url_for('plan.update_status', item_id=item.id) }}"
+      hx-vals='{"status": "{{ 'pending' if item.status.value == 'done' else 'done' }}"}'
+      hx-target="#plan-item-{{ item.id }}" hx-swap="outerHTML">
+      {{ icon('circle-check', size=15) }}
+    </button>
+    <button
+      class="status-btn partial-btn {{ 'active' if item.status.value == 'partial' }}"
+      title="Mark partial"
+      onclick="document.getElementById('partial-form-{{ item.id }}').classList.toggle('hidden')">
+      {{ icon('minus', size=15) }}
+    </button>
+    <button
+      class="status-btn skip-btn {{ 'active' if item.status.value == 'skipped' }}"
+      title="Skip"
+      hx-post="{{ url_for('plan.update_status', item_id=item.id) }}"
+      hx-vals='{"status": "{{ 'pending' if item.status.value == 'skipped' else 'skipped' }}"}'
+      hx-target="#plan-item-{{ item.id }}" hx-swap="outerHTML">
+      {{ icon('circle-x', size=15) }}
+    </button>
+  </div>
+</div>
+<div id="partial-form-{{ item.id }}" class="hidden" style="padding: 0 4px 10px 52px; display:flex; gap:8px;">
+  <input type="number" min="1" max="{{ item.planned_minutes }}" value="{{ (item.planned_minutes / 2)|round|int }}" style="max-width:100px;" id="partial-input-{{ item.id }}">
+  <button class="btn btn-sm btn-secondary"
+    hx-post="{{ url_for('plan.update_status', item_id=item.id) }}"
+    hx-vals='js:{"status": "partial", "actual_minutes": document.getElementById("partial-input-{{ item.id }}").value}'
+    hx-target="#plan-item-{{ item.id }}" hx-swap="outerHTML">Save</button>
+</div>
+{% for m in milestones %}
+<script>Sprachweg.showToast("🎉 {{ m.label }}"); Sprachweg.confettiBurst();</script>
+{% endfor %}

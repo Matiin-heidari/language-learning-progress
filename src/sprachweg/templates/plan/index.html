@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% from "macros/forms.html" import csrf_input %}
+{% from "macros/icons.html" import icon %}
+{% from "macros/ui.html" import minutes_label, hours_label %}
+
+{% block title %}Plan · Sprachweg{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Weekly plan</h1>
+</div>
+
+{% if not active_plan %}
+<div class="card">
+  <div class="empty-state">
+    {{ icon('calendar-check') }}
+    <p>No active plan yet. Get a suggestion in 30 seconds, or start from scratch.</p>
+  </div>
+  <form method="post" action="{{ url_for('plan.suggest') }}" class="grid grid-2 mt-16">
+    {{ csrf_input() }}
+    <div class="field">
+      <label>Days per week</label>
+      <input type="number" name="days_per_week" value="5" min="1" max="7">
+    </div>
+    <div class="field">
+      <label>Minutes per day</label>
+      <input type="number" name="minutes_per_day" value="90" min="5" max="600" step="5">
+    </div>
+    <button type="submit" class="btn btn-primary" style="grid-column: 1 / -1;">{{ icon('sparkles', size=15) }} Suggest a plan</button>
+  </form>
+  <form method="post" action="{{ url_for('plan.create_plan') }}" class="mt-16">
+    {{ csrf_input() }}
+    <div class="flex gap-8">
+      <input type="text" name="name" placeholder="Plan name (optional)" style="flex:1;">
+      <button type="submit" class="btn btn-secondary">Start from scratch</button>
+    </div>
+  </form>
+</div>
+{% include "partials/quickfill_form.html" %}
+{% else %}
+<div class="card">
+  <div class="card-title">
+    {{ active_plan.name }} · {{ hours_label(active_plan.weekly_goal_minutes) }} h / week
+    <form method="post" action="{{ url_for('plan.archive_plan', plan_id=active_plan.id) }}" onsubmit="return confirm('Archive this plan?');">
+      {{ csrf_input() }}
+      <button type="submit" class="btn btn-ghost btn-sm">Archive</button>
+    </form>
+  </div>
+
+  <div class="grid" style="grid-template-columns: repeat(7, 1fr); gap: 10px;">
+    {% for wd in range(7) %}
+    <div>
+      <div style="font-weight:600; font-size:13px; margin-bottom:8px; display:flex; justify-content:space-between;">
+        <span>{{ weekday_names[wd][:3] }}</span>
+        <span class="text-muted">{{ minutes_label(day_totals[wd]) }}</span>
+      </div>
+      {% for item in items_by_day[wd] %}
+      <div class="chip" style="width:100%; justify-content:space-between; margin-bottom:6px; display:flex;">
+        <span style="display:flex; align-items:center; gap:6px; overflow:hidden; text-overflow:ellipsis;">
+          <span class="dot" style="background: var(--series-{{ item.activity_type.color_slot }});"></span>
+          {{ item.activity_type.name }} · {{ minutes_label(item.planned_minutes) }}
+        </span>
+        <form method="post" action="{{ url_for('plan.delete_template_item', item_id=item.id) }}" onsubmit="return confirm('Remove this item?');">
+          {{ csrf_input() }}
+          <button type="submit" class="btn btn-ghost btn-sm" style="padding:2px; min-height:auto;">{{ icon('x', size=12) }}</button>
+        </form>
+      </div>
+      {% endfor %}
+      <button class="btn btn-ghost btn-sm w-full" onclick="document.getElementById('add-item-{{ wd }}').classList.toggle('hidden')">{{ icon('plus', size=12) }} Add</button>
+      <form id="add-item-{{ wd }}" method="post" action="{{ url_for('plan.add_template_item', plan_id=active_plan.id) }}" class="hidden mt-8">
+        {{ csrf_input() }}
+        <input type="hidden" name="weekday" value="{{ wd }}">
+        <select name="activity_type_id" class="mt-8" style="font-size:12px; padding:6px;">
+          {% for a in activities %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
+        </select>
+        <input type="number" name="planned_minutes" value="30" min="5" max="600" class="mt-8" style="font-size:12px; padding:6px;">
+        <button type="submit" class="btn btn-primary btn-sm w-full mt-8">Save</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card mt-16">
+  <div class="card-title">Suggest a new mix</div>
+  <form method="post" action="{{ url_for('plan.suggest') }}" class="grid grid-2">
+    {{ csrf_input() }}
+    <div class="field">
+      <label>Days per week</label>
+      <input type="number" name="days_per_week" value="5" min="1" max="7">
+    </div>
+    <div class="field">
+      <label>Minutes per day</label>
+      <input type="number" name="minutes_per_day" value="90" min="5" max="600" step="5">
+    </div>
+    <button type="submit" class="btn btn-secondary" style="grid-column: 1 / -1;">{{ icon('sparkles', size=15) }} Regenerate from current level's recommended mix</button>
+  </form>
+</div>
+
+{% include "partials/quickfill_form.html" %}
+{% endif %}
+
+{% if archived_plans %}
+<div class="card mt-16">
+  <div class="card-title">Past plans</div>
+  {% for p in archived_plans %}
+  <div class="plan-item-row">
+    <div class="plan-item-body">
+      <div class="plan-item-title">{{ p.name }}</div>
+      <div class="plan-item-meta">{{ p.starts_on.strftime('%d %b %Y') }} – {{ p.ends_on.strftime('%d %b %Y') if p.ends_on else 'ongoing' }}</div>
+    </div>
+    <div class="plan-item-actions">
+      <form method="post" action="{{ url_for('plan.activate_plan_route', plan_id=p.id) }}" onsubmit="return confirm('Reactivate {{ p.name }}?{% if active_plan %} This will archive your current active plan ({{ active_plan.name }}).{% endif %}');">
+        {{ csrf_input() }}
+        <button type="submit" class="btn btn-ghost btn-sm" title="Reactivate this plan">{{ icon('calendar-check', size=13) }} Reactivate</button>
+      </form>
+      <form method="post" action="{{ url_for('plan.delete_plan_route', plan_id=p.id) }}" onsubmit="return confirm('Delete {{ p.name }} permanently? Logged sessions stay -- only the plan and its checklist are removed.');">
+        {{ csrf_input() }}
+        <button type="submit" class="btn btn-ghost btn-sm" title="Delete this plan">{{ icon('trash-2', size=13) }}</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

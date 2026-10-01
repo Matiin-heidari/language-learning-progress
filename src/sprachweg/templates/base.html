@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en" data-theme="">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}Sprachweg{% endblock %}</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🇩🇪</text></svg>">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <script>
+    // Apply saved theme before paint to avoid a flash of the wrong theme.
+    (function () {
+      try {
+        var t = localStorage.getItem('sprachweg-theme');
+        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}'>
+  {% from "macros/icons.html" import icon %}
+  {% from "macros/forms.html" import csrf_input %}
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">🇩🇪</span>
+        <span>Sprachweg</span>
+      </div>
+
+      {% if languages and languages|length > 1 %}
+      <div class="lang-switcher" onclick="document.getElementById('lang-menu').classList.toggle('hidden')" style="position:relative;">
+        <span>{{ language.flag_emoji }} {{ language.name }}</span>
+        {{ icon('chevron-right', size=14) }}
+        <div id="lang-menu" class="hidden" style="position:absolute; top:110%; left:0; right:0; background:var(--surface-raised); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:var(--shadow-raised); z-index:50;">
+          {% for lang in languages %}
+          <a href="{{ url_for('dashboard.switch_language', code=lang.code) }}" style="display:block; padding:8px 12px; text-decoration:none; color:var(--text-primary);">{{ lang.flag_emoji }} {{ lang.name }}</a>
+          {% endfor %}
+        </div>
+      </div>
+      {% elif language %}
+      <div class="lang-switcher" style="cursor:default;">
+        <span>{{ language.flag_emoji }} {{ language.name }}</span>
+      </div>
+      {% endif %}
+
+      <nav>
+        <ul class="nav-list">
+          <li><a class="nav-link {{ 'active' if request.endpoint == 'dashboard.index' }}" href="{{ url_for('dashboard.index') }}">{{ icon('layout-dashboard') }} Dashboard</a></li>
+          <li><a class="nav-link {{ 'active' if request.endpoint == 'plan.today_view' }}" href="{{ url_for('plan.today_view') }}">{{ icon('calendar-check') }} Today</a></li>
+          <li><a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('plan.') and request.endpoint != 'plan.today_view' }}" href="{{ url_for('plan.index') }}">{{ icon('list') }} Plan</a></li>
+          <li><a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('log.') }}" href="{{ url_for('log.index') }}">{{ icon('book-marked') }} Log</a></li>
+          <li><a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('stats.') }}" href="{{ url_for('stats.index') }}">{{ icon('bar-chart-3') }} Stats</a></li>
+          <li><a class="nav-link {{ 'active' if request.endpoint == 'profile.leaderboard' }}" href="{{ url_for('profile.leaderboard') }}">{{ icon('trophy') }} Leaderboard</a></li>
+          <li><a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('settings.') }}" href="{{ url_for('settings.index') }}">{{ icon('settings') }} Settings</a></li>
+        </ul>
+      </nav>
+
+      <div class="sidebar-footer">
+        {% if current_user.is_authenticated %}
+        <a class="nav-link" href="{{ url_for('profile.view', username=current_user.username) }}" style="font-size:13px;">
+          {{ icon('sparkles', size=16) }} @{{ current_user.username }}
+        </a>
+        <form method="post" action="{{ url_for('auth.logout') }}">
+          {{ csrf_input() }}
+          <button type="submit" class="theme-toggle w-full" style="justify-content:flex-start; gap:10px;">
+            {{ icon('log-out', size=16) }} Log out
+          </button>
+        </form>
+        {% endif %}
+        <button class="theme-toggle" onclick="Sprachweg.toggleTheme()" aria-label="Toggle theme">
+          <span id="theme-label">Theme</span>
+          <span id="theme-icon-sun">{{ icon('sun', size=16) }}</span>
+        </button>
+      </div>
+    </aside>
+
+    <div class="main-content">
+      <div class="topbar">
+        <span class="brand" style="font-size:16px;">🇩🇪 Sprachweg</span>
+        <button class="btn btn-icon btn-ghost" onclick="Sprachweg.toggleTheme()">{{ icon('sun', size=18) }}</button>
+      </div>
+
+      <div class="container mt-24">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, m in messages %}
+            <div class="card mt-16" style="{{ 'border-color: var(--critical); background: var(--critical-soft);' if category == 'error' else ('border-color: var(--good); background: var(--good-soft);' if category == 'success' else '') }}">{{ m }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+      </div>
+    </div>
+  </div>
+
+  {% if current_user.is_authenticated %}
+  <button class="fab-desktop" hx-get="{{ url_for('log.new_session') }}" hx-target="#modal-root" hx-swap="innerHTML" aria-label="Log a session">
+    {{ icon('plus', size=24) }}
+  </button>
+
+  <nav class="bottom-nav">
+    <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if request.endpoint == 'dashboard.index' }}">{{ icon('layout-dashboard') }}<span>Home</span></a>
+    <a href="{{ url_for('plan.today_view') }}" class="{{ 'active' if request.endpoint == 'plan.today_view' }}">{{ icon('calendar-check') }}<span>Today</span></a>
+    <a href="#" class="fab" hx-get="{{ url_for('log.new_session') }}" hx-target="#modal-root" hx-swap="innerHTML" aria-label="Log a session">{{ icon('plus', size=22) }}</a>
+    <a href="{{ url_for('stats.index') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('stats.') }}">{{ icon('bar-chart-3') }}<span>Stats</span></a>
+    <a href="{{ url_for('settings.index') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('settings.') }}">{{ icon('settings') }}<span>More</span></a>
+  </nav>
+  {% endif %}
+
+  <div id="modal-root"></div>
+  <div id="toast-root" class="toast-stack"></div>
+
+  <script src="{{ url_for('static', filename='vendor/htmx.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

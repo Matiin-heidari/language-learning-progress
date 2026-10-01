@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "macros/icons.html" import icon %}
+{% from "macros/ui.html" import progress_ring, minutes_label %}
+
+{% block title %}Today · Sprachweg{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow">{{ day.strftime('%A, %d %B %Y') }}</div>
+    <h1>Today</h1>
+  </div>
+</div>
+
+<div class="card flex items-center gap-12">
+  {{ progress_ring((today_minutes / daily_goal * 100) if daily_goal else 0, size=64, stroke=7) }}
+  <div>
+    <div class="stat-value">{{ minutes_label(today_minutes) }} <span class="text-muted" style="font-size:13px; font-weight:500;">/ {{ minutes_label(daily_goal) }} daily goal</span></div>
+    <button class="btn btn-primary btn-sm mt-8" hx-get="{{ url_for('log.new_session') }}" hx-target="#modal-root" hx-swap="innerHTML">{{ icon('plus', size=14) }} Log a session</button>
+  </div>
+</div>
+
+<div class="card mt-16">
+  <div class="card-title">Plan for today</div>
+  {% if not items %}
+  <div class="empty-state">
+    {{ icon('calendar-check') }}
+    <p>Nothing scheduled. <a href="{{ url_for('plan.index') }}">Set up a plan</a> or log an ad-hoc session.</p>
+  </div>
+  {% else %}
+  {% for item in items %}
+    {% include "partials/plan_item.html" %}
+  {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}

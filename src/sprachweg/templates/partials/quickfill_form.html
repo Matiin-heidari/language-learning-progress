@@ -1,0 +1,49 @@
+{# "Universal daily plan": build one day's activities, apply to many weekdays
+   at once. Included from plan/index.html both when there's no active plan
+   yet (creates one) and below an existing plan's grid (adds to it). #}
+{% from "macros/icons.html" import icon %}
+{% from "macros/forms.html" import csrf_input %}
+<div class="card mt-16">
+  <div class="card-title" style="text-transform:none; font-size:14px;">
+    <label class="flex items-center gap-8" style="cursor:pointer; font-weight:600; color:var(--text-primary);">
+      <input type="checkbox" style="width:auto;" onchange="document.getElementById('quickfill-body').classList.toggle('hidden')">
+      Set a universal daily plan (apply the same activities to several days at once)
+    </label>
+  </div>
+  <div id="quickfill-body" class="hidden">
+    <p class="text-muted mt-8" style="font-size:13px;">
+      Build one day's worth of activities below, pick which days it applies to, and save --
+      no need to repeat yourself for every weekday.
+    </p>
+    <form method="post" action="{{ url_for('plan.apply_to_days') }}" class="mt-16">
+      {{ csrf_input() }}
+      <div class="field">
+        <label>Days</label>
+        <div class="chip-group">
+          {% for wd in range(7) %}
+          <label class="chip {{ 'checked' if wd < 5 }}">
+            <input type="checkbox" name="weekday" value="{{ wd }}" {{ 'checked' if wd < 5 }} onchange="this.closest('.chip').classList.toggle('checked', this.checked)">
+            {{ weekday_names[wd][:3] }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Activities for that day</label>
+        <div id="quickfill-rows">
+          <div class="quickfill-row flex gap-8 mt-8">
+            <select name="activity_type_id[]" style="flex:2;">
+              {% for a in activities %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
+            </select>
+            <input type="number" name="planned_minutes[]" value="30" min="5" max="600" step="5" style="flex:1;">
+            <button type="button" class="btn btn-ghost btn-icon" onclick="Sprachweg.removeQuickfillRow(this)" aria-label="Remove activity">{{ icon('x', size=14) }}</button>
+          </div>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm mt-8" onclick="Sprachweg.addQuickfillRow()">{{ icon('plus', size=12) }} Add another activity</button>
+      </div>
+
+      <button type="submit" class="btn btn-primary mt-16">Apply to selected days</button>
+    </form>
+  </div>
+</div>

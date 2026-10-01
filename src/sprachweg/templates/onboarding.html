@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Welcome · Sprachweg</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body style="display:flex; align-items:center; justify-content:center; min-height:100vh;">
+  <div class="card" style="width:100%; max-width:440px; text-align:center;">
+    <div style="font-size:40px;">🇩🇪</div>
+    <h1 style="font-family:var(--font-display); margin-top:12px;">Welcome to Sprachweg</h1>
+    <p class="text-secondary mt-16">No language is set up yet. Run <code>uv run flask --app sprachweg seed</code> to create German with CEFR levels, then refresh this page.</p>
+  </div>
+</body>
+</html>

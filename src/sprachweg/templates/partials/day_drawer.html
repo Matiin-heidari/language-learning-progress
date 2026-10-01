@@ -1,0 +1,22 @@
+{% from "macros/icons.html" import icon %}
+{% from "macros/ui.html" import minutes_label %}
+<div class="card" style="background: var(--surface-2); box-shadow:none;">
+  <div class="card-title">
+    {{ day.strftime('%A, %d %B') }}
+    <span>{{ minutes_label(total) }} total</span>
+  </div>
+  {% if not sessions %}
+  <p class="text-muted">Nothing logged this day.</p>
+  {% else %}
+  {% for s in sessions %}
+  <div class="plan-item-row">
+    <div class="plan-item-icon" style="background: var(--series-{{ s.activity_type.color_slot }});">{{ icon(s.activity_type.icon, size=14) }}</div>
+    <div class="plan-item-body">
+      <div class="plan-item-title">{{ s.activity_type.name }}{% if s.resource %} · {{ s.resource }}{% endif %}</div>
+      {% if s.note %}<div class="plan-item-meta">{{ s.note }}</div>{% endif %}
+    </div>
+    <div class="plan-item-meta">{{ minutes_label(s.minutes) }}</div>
+  </div>
+  {% endfor %}
+  {% endif %}
+</div>

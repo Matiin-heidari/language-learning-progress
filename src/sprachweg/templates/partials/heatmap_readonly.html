@@ -1,0 +1,55 @@
+{# Read-only variant of partials/heatmap.html for viewing *someone else's*
+   heatmap (profile page) -- no click-to-drill-down, since that would hit
+   the viewer's own day-drawer route, not the profile owner's data. #}
+{% set cell = 11 %}
+{% set gap = 3 %}
+{% set step = cell + gap %}
+{% set left_pad = 28 %}
+{% set top_pad = 18 %}
+{% set svg_width = left_pad + (heatmap.weeks|length * step) %}
+{% set svg_height = top_pad + (7 * step) %}
+
+<div class="heatmap-scroll" id="heatmap-scroll-ro">
+  <svg class="heatmap-svg" width="{{ svg_width }}" height="{{ svg_height }}" viewBox="0 0 {{ svg_width }} {{ svg_height }}" role="img" aria-label="Activity heatmap for the last 12 months">
+    {% for week_index, month_name in heatmap.month_labels %}
+    <text x="{{ left_pad + week_index * step }}" y="10" font-size="10" fill="var(--text-muted)">{{ month_name }}</text>
+    {% endfor %}
+
+    <text x="0" y="{{ top_pad + 1 * step + 8 }}" font-size="9" fill="var(--text-muted)">Mon</text>
+    <text x="0" y="{{ top_pad + 3 * step + 8 }}" font-size="9" fill="var(--text-muted)">Wed</text>
+    <text x="0" y="{{ top_pad + 5 * step + 8 }}" font-size="9" fill="var(--text-muted)">Fri</text>
+
+    {% for week in heatmap.weeks %}
+      {% set week_i = loop.index0 %}
+      {% for day in week %}
+        {% if day.is_in_range %}
+        <rect
+          x="{{ left_pad + week_i * step }}"
+          y="{{ top_pad + loop.index0 * step }}"
+          width="{{ cell }}" height="{{ cell }}" rx="2"
+          fill="var(--heat-{{ day.level }})"
+          class="{{ 'heat-today' if day.is_today }}"
+          style="{{ 'stroke: var(--accent); stroke-width:1.5;' if day.is_today }}"
+        ><title>{{ day.date.strftime('%a, %d %b %Y') }}: {{ day.minutes }} min</title></rect>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+  </svg>
+</div>
+
+<div class="heatmap-legend">
+  <span>Less</span>
+  <span class="sq" style="background: var(--heat-0);"></span>
+  <span class="sq" style="background: var(--heat-1);"></span>
+  <span class="sq" style="background: var(--heat-2);"></span>
+  <span class="sq" style="background: var(--heat-3);"></span>
+  <span class="sq" style="background: var(--heat-4);"></span>
+  <span class="sq" style="background: var(--heat-5);"></span>
+  <span>More</span>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('#heatmap-scroll-ro').forEach(function (s) { s.scrollLeft = s.scrollWidth; });
+  });
+</script>

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "macros/icons.html" import icon %}
+{% from "macros/ui.html" import minutes_label %}
+
+{% block title %}Log · Sprachweg{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Session log</h1>
+  <div class="flex gap-8">
+    <a href="{{ url_for('log.export_csv') }}" class="btn btn-secondary btn-sm">{{ icon('download', size=14) }} Export CSV</a>
+    <button class="btn btn-primary btn-sm" hx-get="{{ url_for('log.new_session') }}" hx-target="#modal-root" hx-swap="innerHTML">{{ icon('plus', size=14) }} Log session</button>
+  </div>
+</div>
+
+<form method="get" class="card mt-16" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+  <div class="field" style="margin:0; min-width:160px;">
+    <label>Activity</label>
+    <select name="activity">
+      <option value="">All</option>
+      {% for a in activities %}
+      <option value="{{ a.id }}" {{ 'selected' if activity_filter == a.id }}>{{ a.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field" style="margin:0;">
+    <label>From</label>
+    <input type="date" name="from" value="{{ date_from.isoformat() if date_from }}">
+  </div>
+  <div class="field" style="margin:0;">
+    <label>To</label>
+    <input type="date" name="to" value="{{ date_to.isoformat() if date_to }}">
+  </div>
+  <button class="btn btn-secondary" type="submit">Filter</button>
+  <a href="{{ url_for('log.index') }}" class="btn btn-ghost">Clear</a>
+</form>
+
+{% if not grouped %}
+<div class="card mt-16">
+  <div class="empty-state">
+    {{ icon('book-marked') }}
+    <p>No sessions match these filters.</p>
+  </div>
+</div>
+{% else %}
+{% for day, sessions in grouped.items() %}
+<div class="card mt-16">
+  <div class="card-title">
+    {{ day.strftime('%A, %d %B %Y') }}
+    <span class="text-muted" style="text-transform:none; font-weight:500;">{{ minutes_label(sessions | sum(attribute='minutes')) }} total</span>
+  </div>
+  {% for s in sessions %}
+  <div class="plan-item-row">
+    <div class="plan-item-icon" style="background: var(--series-{{ s.activity_type.color_slot }});">{{ icon(s.activity_type.icon, size=16) }}</div>
+    <div class="plan-item-body">
+      <div class="plan-item-title">{{ s.activity_type.name }}{% if s.resource %} · {{ s.resource }}{% endif %}</div>
+      {% if s.note %}<div class="plan-item-meta">{{ s.note }}</div>{% endif %}
+    </div>
+    <div class="plan-item-meta" style="white-space:nowrap;">{{ minutes_label(s.minutes) }}</div>
+    <div class="plan-item-actions">
+      <a href="{{ url_for('log.edit_session', session_id=s.id) }}" class="status-btn">{{ icon('pencil', size=13) }}</a>
+      <button class="status-btn" hx-post="{{ url_for('log.delete_session', session_id=s.id) }}" hx-confirm="Delete this session?" hx-target="closest .plan-item-row" hx-swap="outerHTML swap:200ms">{{ icon('trash-2', size=13) }}</button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

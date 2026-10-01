@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "macros/forms.html" import csrf_input %}
+{% from "macros/icons.html" import icon %}
+
+{% block title %}{{ 'Edit session' if session else 'Log a session' }} · Sprachweg{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{{ 'Edit session' if session else 'Log a session' }}</h1>
+</div>
+
+<div class="card" style="max-width: 520px;">
+  <form method="post">
+    {{ csrf_input() }}
+    <div class="field">
+      <label>Activity</label>
+      <div class="chip-group" id="edit-activity-chips">
+        {% for a in activities %}
+        <label class="chip {{ 'checked' if session and session.activity_type_id == a.id }}" onclick="document.querySelectorAll('#edit-activity-chips .chip').forEach(c=>c.classList.remove('checked')); this.classList.add('checked');">
+          <input type="radio" name="activity_type_id" value="{{ a.id }}" {{ 'checked' if (session and session.activity_type_id == a.id) or (not session and loop.first) }}>
+          <span class="dot" style="background: var(--series-{{ a.color_slot }});"></span>
+          {{ icon(a.icon, size=14) }} {{ a.name }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="field">
+        <label>Date</label>
+        <input type="date" name="study_date" value="{{ (session.study_date if session else today).isoformat() }}" max="{{ today.isoformat() }}">
+      </div>
+      <div class="field">
+        <label>Minutes</label>
+        <input type="number" name="minutes" min="1" max="960" value="{{ session.minutes if session else 30 }}">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Resource (optional)</label>
+      <input type="text" name="resource" value="{{ session.resource if session else '' }}" placeholder="e.g. Nicos Weg Ep. 12">
+    </div>
+
+    <div class="field">
+      <label>Note (optional)</label>
+      <textarea name="note" placeholder="Anything worth remembering...">{{ session.note if session else '' }}</textarea>
+    </div>
+
+    <div class="flex gap-8">
+      <button type="submit" class="btn btn-primary">Save</button>
+      <a href="{{ url_for('log.index') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

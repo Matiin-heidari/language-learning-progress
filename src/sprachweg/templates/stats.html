@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% from "macros/icons.html" import icon %}
+{% from "macros/ui.html" import hours_label, minutes_label %}
+
+{% block title %}Stats · Sprachweg{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Stats</h1>
+  <div class="flex gap-8">
+    <a href="{{ url_for('stats.index', weeks=12) }}" class="btn btn-sm {{ 'btn-primary' if weeks == 12 else 'btn-secondary' }}">12w</a>
+    <a href="{{ url_for('stats.index', weeks=26) }}" class="btn btn-sm {{ 'btn-primary' if weeks == 26 else 'btn-secondary' }}">26w</a>
+    <a href="{{ url_for('stats.index', weeks=52) }}" class="btn btn-sm {{ 'btn-primary' if weeks == 52 else 'btn-secondary' }}">52w</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">
+    Weekly hours by activity
+    <button class="table-toggle" onclick="document.getElementById('weekly-chart-wrap').classList.toggle('hidden'); document.getElementById('weekly-table-wrap').classList.toggle('hidden');">View as table</button>
+  </div>
+  <div id="weekly-chart-wrap">
+    <canvas id="weeklyChart" height="90"></canvas>
+    <div class="legend mt-16" id="weekly-legend"></div>
+  </div>
+  <div id="weekly-table-wrap" class="hidden" style="overflow-x:auto;">
+    <table class="data-table">
+      <thead><tr><th>Week of</th>{% for key, a in activities.items() %}<th>{{ a.name }}</th>{% endfor %}<th>Total</th></tr></thead>
+      <tbody>
+        {% for w in weekly %}
+        <tr>
+          <td>{{ w.label }}</td>
+          {% for key, a in activities.items() %}<td>{{ hours_label(w.by_activity.get(key, 0)) }}h</td>{% endfor %}
+          <td><strong>{{ hours_label(w.total_minutes) }}h</strong></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="grid grid-2 mt-16">
+  <div class="card">
+    <div class="card-title">All-time split vs recommended mix</div>
+    {% set current = progress.current_level %}
+    {% for lp in [current] if current %}
+      {% for skill in lp.skills.values() %}
+      <div class="skill-bar-row" style="margin-bottom:12px;">
+        <span class="skill-icon" style="color: var(--series-{{ skill.activity_type.color_slot }});">{{ icon(skill.activity_type.icon, size=14) }}</span>
+        <span style="width:90px; flex-shrink:0;">{{ skill.activity_type.name }}</span>
+        <div class="skill-bar-track"><div class="skill-bar-fill" style="width:{{ (split.get(skill.activity_type.key, 0) / (split.values()|sum) * 100) if split.values()|sum > 0 else 0 }}%; background: var(--series-{{ skill.activity_type.color_slot }});"></div></div>
+        <span class="skill-bar-value">{{ hours_label(split.get(skill.activity_type.key, 0)) }}h</span>
+      </div>
+      {% endfor %}
+    {% endfor %}
+  </div>
+
+  <div class="card">
+    <div class="card-title">What if I study...</div>
+    <label>Minutes per day: <span id="whatif-value">60</span></label>
+    <input type="range" min="10" max="240" step="5" value="60" id="whatif-slider" style="width:100%;">
+    <p class="mt-16" id="whatif-result">—</p>
+  </div>
+</div>
+
+<div class="card mt-16">
+  <div class="card-title">Activity heatmap</div>
+  {% include "partials/heatmap.html" %}
+</div>
+
+<div class="card mt-16">
+  <div class="card-title">Milestones</div>
+  {% if not milestones %}
+  <p class="text-muted">No milestones yet — keep going!</p>
+  {% else %}
+  {% for m in milestones %}
+  <div class="plan-item-row">
+    <div class="plan-item-icon" style="background: var(--accent);">{{ icon('sparkles', size=14) }}</div>
+    <div class="plan-item-body">
+      <div class="plan-item-title">
+        {% if m.kind == 'level_hours_reached' %}{{ m.ref }} hours complete
+        {% elif m.kind == 'hours_total' %}{{ m.ref }} total hours logged
+        {% elif m.kind == 'streak' %}{{ m.ref }}-day streak
+        {% elif m.kind == 'exam_passed' %}{{ m.ref }} exam passed
+        {% else %}{{ m.kind }} {{ m.ref }}{% endif %}
+      </div>
+      <div class="plan-item-meta">{{ m.achieved_on.strftime('%d %b %Y') }}</div>
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script>
+(function () {
+  fetch("{{ url_for('stats.api_weekly', weeks=weeks) }}").then(r => r.json()).then(data => {
+    const ctx = document.getElementById('weeklyChart');
+    const style = getComputedStyle(document.documentElement);
+    const colors = data.datasets.map(d => style.getPropertyValue('--series-' + d.colorSlot).trim());
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: data.labels,
+        datasets: data.datasets.map((d, i) => ({
+          label: d.label,
+          data: d.data,
+          backgroundColor: colors[i],
+          borderRadius: 2,
+          stack: 'total',
+        })),
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+        scales: {
+          x: { stacked: true, grid: { display: false } },
+          y: { stacked: true, grid: { color: style.getPropertyValue('--border').trim() }, title: { display: true, text: 'hours' } },
+        },
+      },
+    });
+    const legend = document.getElementById('weekly-legend');
+    data.datasets.forEach((d, i) => {
+      const item = document.createElement('span');
+      item.className = 'legend-item';
+      item.innerHTML = `<span class="legend-dot" style="background:${colors[i]}"></span>${d.label}`;
+      legend.appendChild(item);
+    });
+  });
+})();
+
+(function () {
+  const slider = document.getElementById('whatif-slider');
+  const valueEl = document.getElementById('whatif-value');
+  const resultEl = document.getElementById('whatif-result');
+  const paceGoalMinutes = {{ progress.goal_minutes - progress.total_minutes }};
+  const currentRemaining = {{ progress.current_level.remaining_minutes if progress.current_level else 0 }};
+  const currentCode = "{{ progress.current_level.level.code if progress.current_level else '' }}";
+  const goalCode = "{{ progress.goal_level.code if progress.goal_level else '' }}";
+
+  function fmtDate(daysFromNow) {
+    const d = new Date();
+    d.setDate(d.getDate() + daysFromNow);
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  function update() {
+    const perDay = parseInt(slider.value, 10);
+    valueEl.textContent = perDay;
+    if (perDay <= 0) { resultEl.textContent = '—'; return; }
+    let msg = '';
+    if (currentRemaining > 0 && currentCode) {
+      const days = Math.ceil(currentRemaining / perDay);
+      msg += `${currentCode} by ${fmtDate(days)}. `;
+    }
+    if (paceGoalMinutes > 0 && goalCode) {
+      const days = Math.ceil(paceGoalMinutes / perDay);
+      msg += `${goalCode} by ${fmtDate(days)}.`;
+    }
+    resultEl.textContent = msg || 'Goal already reached! 🎉';
+  }
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% from "macros/icons.html" import icon %}
+
+{% block title %}@{{ profile_user.username }} · Sprachweg{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="empty-state">
+    {{ icon('settings') }}
+    <p><strong>@{{ profile_user.username }}</strong>'s profile is private.</p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% from "macros/forms.html" import csrf_input %}
+{% from "macros/icons.html" import icon %}
+<div class="modal-overlay">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <h2 style="font-family:var(--font-display); font-size:20px;">Log a session</h2>
+      <button class="btn btn-icon btn-ghost" data-close-modal aria-label="Close">{{ icon('x', size=18) }}</button>
+    </div>
+    <form action="{{ url_for('log.new_session') }}" method="post" hx-post="{{ url_for('log.new_session') }}" hx-target="#modal-root" hx-swap="innerHTML">
+      {{ csrf_input() }}
+      <div class="field">
+        <label>Activity</label>
+        <div class="chip-group" id="activity-chips">
+          {% for a in activities %}
+          <label class="chip" onclick="document.querySelectorAll('#activity-chips .chip').forEach(c=>c.classList.remove('checked')); this.classList.add('checked');">
+            <input type="radio" name="activity_type_id" value="{{ a.id }}" {{ 'checked' if loop.first }} required>
+            <span class="dot" style="background: var(--series-{{ a.color_slot }});"></span>
+            {{ icon(a.icon, size=14) }} {{ a.name }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Minutes</label>
+        <div class="chip-group" id="minute-chips">
+          {% for m in [15, 30, 45, 60, 90] %}
+          <label class="chip" onclick="document.querySelectorAll('#minute-chips .chip').forEach(c=>c.classList.remove('checked')); this.classList.add('checked'); document.getElementById('minutes-input').value = {{ m }};">
+            <input type="radio" name="_minutes_preset" value="{{ m }}" {{ 'checked' if m == 30 }}>
+            {{ m }}
+          </label>
+          {% endfor %}
+        </div>
+        <input type="number" id="minutes-input" name="minutes" min="1" max="960" value="30" class="mt-8" placeholder="or type minutes / h:mm">
+      </div>
+
+      <div class="grid grid-2">
+        <div class="field">
+          <label>Date</label>
+          <input type="date" name="study_date" value="{{ today.isoformat() }}" max="{{ today.isoformat() }}">
+        </div>
+        <div class="field">
+          <label>Resource (optional)</label>
+          <input type="text" name="resource" placeholder="e.g. Nicos Weg Ep. 12">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Note (optional)</label>
+        <textarea name="note" placeholder="Anything worth remembering..."></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-full">Save session</button>
+    </form>
+  </div>
+</div>

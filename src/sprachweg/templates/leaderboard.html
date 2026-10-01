@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "macros/icons.html" import icon %}
+{% from "macros/ui.html" import minutes_label %}
+
+{% block title %}Leaderboard · Sprachweg{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Leaderboard</h1>
+  <div class="flex gap-8">
+    <a href="{{ url_for('profile.leaderboard', metric='today') }}" class="btn btn-sm {{ 'btn-primary' if metric == 'today' else 'btn-secondary' }}">Today</a>
+    <a href="{{ url_for('profile.leaderboard', metric='week') }}" class="btn btn-sm {{ 'btn-primary' if metric == 'week' else 'btn-secondary' }}">This week</a>
+    <a href="{{ url_for('profile.leaderboard', metric='streak') }}" class="btn btn-sm {{ 'btn-primary' if metric == 'streak' else 'btn-secondary' }}">Streak</a>
+  </div>
+</div>
+
+<div class="card">
+  {% if not rows %}
+  <div class="empty-state">
+    {{ icon('trophy') }}
+    <p>
+      {% if metric == 'today' %}Nobody's logged time today yet -- be the first!
+      {% elif metric == 'week' %}Nobody's logged time this week yet.
+      {% else %}Nobody has an active streak right now.{% endif %}
+    </p>
+  </div>
+  {% else %}
+  {% for row in rows %}
+  <div class="plan-item-row">
+    <div class="plan-item-icon" style="background: {{ 'var(--warning)' if row.rank == 1 else ('var(--text-muted)' if row.rank == 2 else ('var(--flame)' if row.rank == 3 else 'var(--surface-2)')) }}; color: {{ 'var(--text-secondary)' if row.rank > 3 }};">
+      {% if row.rank <= 3 %}🏅{% else %}{{ row.rank }}{% endif %}
+    </div>
+    <div class="plan-item-body">
+      <div class="plan-item-title">
+        <a href="{{ url_for('profile.view', username=row.user.username) }}">@{{ row.user.username }}</a>
+        {% if row.user.id == current_user.id %}<span class="text-muted">(you)</span>{% endif %}
+      </div>
+    </div>
+    <div class="plan-item-meta" style="white-space:nowrap; font-weight:600; color:var(--text-primary);">
+      {% if metric == 'streak' %}🔥 {{ row.value|int }}d{% else %}{{ minutes_label(row.value|int) }}{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}
