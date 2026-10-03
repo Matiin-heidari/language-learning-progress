@@ -180,6 +180,12 @@
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 
+html, body {
+  max-width: 100%;
+  overflow-x: hidden; /* backstop: no single misbehaving element should be
+                         able to force the whole page to scroll sideways */
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -313,9 +319,9 @@ svg { display: block; }
 }
 .bottom-nav a {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
-  color: var(--text-muted); text-decoration: none; font-size: 11px;
-  padding: 4px 10px; border-radius: var(--radius-sm);
-  min-width: 48px; min-height: 44px; justify-content: center;
+  color: var(--text-muted); text-decoration: none; font-size: 10.5px;
+  padding: 4px 6px; border-radius: var(--radius-sm);
+  min-width: 42px; min-height: 44px; justify-content: center;
 }
 .bottom-nav a.active { color: var(--accent); }
 .bottom-nav a svg { width: 22px; height: 22px; }
@@ -360,6 +366,10 @@ svg { display: block; }
   grid-template-columns: 1.5fr 1fr;
   align-items: start;
 }
+/* A grid item's default min-width is "auto" (don't shrink below content
+   size) -- a wide child like the heatmap SVG would otherwise force the
+   whole grid, and the page with it, wider than the viewport on mobile. */
+.grid > * { min-width: 0; }
 @media (max-width: 1023px) {
   .grid-2, .grid-dashboard { grid-template-columns: 1fr; }
 }
@@ -383,6 +393,7 @@ svg { display: block; }
   transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
   min-height: 40px;
   text-decoration: none;
+  white-space: nowrap;
 }
 .btn:active { transform: scale(0.97); }
 .btn-primary { background: var(--accent); color: var(--text-on-accent); }
@@ -465,6 +476,18 @@ label { font-size: 13px; font-weight: 500; color: var(--text-secondary); display
   border: 5px solid transparent; border-top-color: var(--accent);
 }
 
+/* The overall goal bar barely moves day to day (it's hundreds of hours
+   wide); this one is just the *current* level, so a single logged session
+   visibly moves it -- the fast-feedback counterpart to the slow one above. */
+.current-level-bar { margin-top: 24px; }
+.current-level-track {
+  height: 28px; border-radius: var(--radius-pill); background: var(--surface-2); overflow: hidden;
+}
+.current-level-fill {
+  height: 100%; background: var(--accent); border-radius: inherit;
+  transition: width var(--dur-slow) var(--ease);
+}
+
 .info-link {
   font-size: 12px; color: var(--text-muted); text-decoration: underline; cursor: pointer;
   background: none; border: none; padding: 0;
@@ -475,6 +498,7 @@ label { font-size: 13px; font-weight: 500; color: var(--text-secondary); display
    ========================================================================= */
 
 .stat-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.stat-tiles > * { min-width: 0; }
 @media (max-width: 640px) { .stat-tiles { grid-template-columns: 1fr 1fr; } }
 .stat-tile {
   background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-md);

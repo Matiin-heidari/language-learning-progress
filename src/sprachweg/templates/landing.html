@@ -73,13 +73,13 @@
 </head>
 <body>
   <nav class="landing-nav">
-    <span class="brand">
+    <a href="{{ url_for('main.landing') }}" class="brand" style="text-decoration:none; color:inherit;">
       <span class="brand-mark">🇩🇪</span>
       <span>Sprachweg</span>
-    </span>
+    </a>
     <div class="flex gap-8">
       <a href="{{ url_for('auth.login') }}" class="btn btn-ghost">Log in</a>
-      <a href="{{ url_for('auth.signup') }}" class="btn btn-primary">Sign up free</a>
+      <a href="{{ url_for('auth.signup') }}" class="btn btn-primary">Sign up</a>
     </div>
   </nav>
 
@@ -151,7 +151,7 @@
   <div class="cta-band">
     <h2>Your first session takes 10 seconds to log.</h2>
     <p class="text-secondary mt-8">Create a free account and start your streak today.</p>
-    <a href="{{ url_for('auth.signup') }}" class="btn btn-primary mt-16">Sign up free</a>
+    <a href="{{ url_for('auth.signup') }}" class="btn btn-primary mt-16">Sign up</a>
   </div>
 
   <footer>Sprachweg — a personal language-learning tracker.</footer>

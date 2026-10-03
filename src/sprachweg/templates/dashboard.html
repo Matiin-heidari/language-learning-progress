@@ -23,11 +23,25 @@
         <span class="unit">/ {{ '%.0f'|format(progress.goal_minutes / 60) }} h</span>
       </div>
       {% if eta.goal_date %}
-      <div class="hero-sub">At your 4-week pace ({{ minutes_label(eta.pace_minutes_per_day|round|int) }}/day), {{ progress.goal_level.code if progress.goal_level else 'goal' }} by <strong>{{ eta.goal_date.strftime('%b %Y') }}</strong></div>
+      <div class="hero-sub">
+        At your 4-week pace ({{ minutes_label(eta.pace_minutes_per_day|round|int) }}/day), {{ progress.goal_level.code if progress.goal_level else 'goal' }} by <strong>{{ eta.goal_date.strftime('%b %Y') }}</strong>
+        <a href="{{ url_for('settings.index') }}" class="info-link" style="margin-left:4px;">change goal</a>
+      </div>
+      {% if active_plan %}
+      <div class="hero-sub" style="margin-top:2px;">Your plan targets {{ hours_label(active_plan.weekly_goal_minutes) }}h/week — <a href="{{ url_for('plan.index') }}">view plan</a>.</div>
+      {% else %}
+      <div class="hero-sub" style="margin-top:2px;">No plan yet — <a href="{{ url_for('plan.index') }}">build one</a> for a steadier pace.</div>
+      {% endif %}
       {% elif progress.is_goal_reached %}
       <div class="hero-sub" style="color:var(--good); font-weight:600;">🎉 Goal reached! {{ progress.overflow_minutes // 60 }}h beyond {{ progress.goal_level.code if progress.goal_level else '' }} — consider setting a new goal.</div>
       {% else %}
-      <div class="hero-sub">Log a few sessions to see your projected {{ progress.goal_level.code if progress.goal_level else 'goal' }} date.</div>
+      <div class="hero-sub">
+        Log a few sessions to see your projected {{ progress.goal_level.code if progress.goal_level else 'goal' }} date.
+        <a href="{{ url_for('settings.index') }}" class="info-link" style="margin-left:4px;">change goal</a>
+      </div>
+      {% if not active_plan %}
+      <div class="hero-sub" style="margin-top:2px;">No plan yet — <a href="{{ url_for('plan.index') }}">build one</a> to get started.</div>
+      {% endif %}
       {% endif %}
     </div>
     <div style="text-align:right;">
@@ -65,6 +79,25 @@
       {% endfor %}
     </div>
   </div>
+
+  {% set current = progress.current_level %}
+  {% if current %}
+  <div class="current-level-bar">
+    <div class="flex items-center justify-between" style="margin-bottom:8px;">
+      <span style="font-weight:600; font-size:14px;">
+        Current level: <span style="color:var(--accent);">{{ current.level.code }}</span> &middot; {{ current.level.name }}
+      </span>
+      <span class="text-muted" style="font-size:13px; font-weight:600;">{{ current.pct|round(0)|int }}%</span>
+    </div>
+    <div class="current-level-track">
+      <div class="current-level-fill" style="width: {{ current.pct }}%;"></div>
+    </div>
+    <div class="text-muted mt-8" style="font-size:12px;">
+      {{ hours_label(current.filled_minutes) }} / {{ '%.0f'|format(current.level.target_hours) }} h in {{ current.level.code }}
+      {% if current.remaining_minutes > 0 %}&mdash; {{ hours_label(current.remaining_minutes) }}h to go{% endif %}
+    </div>
+  </div>
+  {% endif %}
 </div>
 
 <!-- Stat tiles -->
