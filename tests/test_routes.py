@@ -284,3 +284,19 @@ def test_user_cannot_mutate_another_users_plan(app, db, client):
     r = client.post(f"/plan/{plan.id}/delete")
     assert r.status_code == 404
     assert db.session.get(StudyPlan, plan.id) is not None
+
+
+def test_today_daily_goal_excludes_mark_complete_backfill(app, language, auth_client):
+    """Marking a level complete logs a big lump of catch-up minutes dated
+    today; that shouldn't make it look like the daily goal was blown out of
+    the water on a day nothing was actually studied."""
+    from sprachweg.models import Level
+
+    with time_machine.travel("2027-01-15 12:00:00+00:00"):
+        a1 = Level.query.filter_by(language_id=language.id, code="A1").first()
+        auth_client.post(f"/levels/{a1.id}/mark-complete")
+
+        r = auth_client.get("/today")
+        assert r.status_code == 200
+        # the daily-goal stat line reads "0m / 1h daily goal", not 120h+
+        assert b">0m <span" in r.data

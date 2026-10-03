@@ -293,9 +293,16 @@ def today_view():
         ensure_plan_items(plan, start=day, end=day + timedelta(days=1))
         items = PlanItem.query.filter_by(plan_id=plan.id, date=day).order_by(PlanItem.id).all()
 
+    # Backfill ("mark level complete") catch-up entries are excluded here too
+    # -- they shouldn't count toward today's daily-goal ring, same reasoning
+    # as the dashboard's "this week" tile and the stats/ETA exclusions.
     today_minutes = (
         db.session.query(db.func.coalesce(db.func.sum(StudySession.minutes), 0))
-        .filter(StudySession.language_id == language.id, StudySession.study_date == day)
+        .filter(
+            StudySession.language_id == language.id,
+            StudySession.study_date == day,
+            StudySession.is_backfill.is_(False),
+        )
         .scalar()
     )
     daily_goal = current_user.daily_goal_minutes
