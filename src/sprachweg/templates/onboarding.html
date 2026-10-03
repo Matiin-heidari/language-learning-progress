@@ -1,16 +1,38 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Welcome · Sprachweg</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
-</head>
-<body style="display:flex; align-items:center; justify-content:center; min-height:100vh;">
-  <div class="card" style="width:100%; max-width:440px; text-align:center;">
-    <div style="font-size:40px;">🇩🇪</div>
-    <h1 style="font-family:var(--font-display); margin-top:12px;">Welcome to Sprachweg</h1>
-    <p class="text-secondary mt-16">No language is set up yet. Run <code>uv run flask --app sprachweg seed</code> to create German with CEFR levels, then refresh this page.</p>
+{% extends "base.html" %}
+{% from "macros/icons.html" import icon %}
+{% from "macros/forms.html" import csrf_input %}
+
+{% block title %}Welcome · Sprachweg{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 480px; margin: 40px auto; text-align:center;">
+  <div style="font-size:40px;">👋</div>
+  <h1 style="font-family:var(--font-display); margin-top:12px;">Welcome to Sprachweg</h1>
+  <p class="text-secondary mt-16">Pick a language to start tracking your study hours.</p>
+
+  {% if available_templates %}
+  <form method="post" action="{{ url_for('settings.add_language') }}" class="mt-16" style="text-align:left;">
+    {{ csrf_input() }}
+    <div class="field">
+      <label>Language</label>
+      <select name="template_code">
+        {% for t in available_templates %}
+        <option value="{{ t.code }}">{{ t.flag_emoji }} {{ t.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary w-full">{{ icon('plus', size=14) }} Add this language</button>
+  </form>
+  {% else %}
+  <div class="empty-state">
+    {{ icon('book-marked') }}
+    <p>No languages are in the catalog yet.</p>
+    {% if current_user.is_admin %}
+    <a href="{{ url_for('admin.new_language') }}" class="btn btn-primary mt-16">Add one as admin</a>
+    {% else %}
+    <p class="text-muted">Ask an admin to add one from Admin &rarr; Language catalog.</p>
+    {% endif %}
   </div>
-</body>
-</html>
+  {% endif %}
+</div>
+{% endblock %}

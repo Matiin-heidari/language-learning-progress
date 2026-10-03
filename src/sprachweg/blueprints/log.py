@@ -22,6 +22,13 @@ def _require_login():
     pass
 
 
+@bp.before_request
+def _require_language():
+    if get_current_language() is None:
+        return redirect(url_for("dashboard.index"))
+    return None
+
+
 def _parse_minutes(raw: str) -> int | None:
     raw = (raw or "").strip()
     if not raw:

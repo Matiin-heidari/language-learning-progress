@@ -11,7 +11,6 @@ from flask_login import current_user, login_required, login_user, logout_user
 
 from sprachweg.extensions import db
 from sprachweg.models import User
-from sprachweg.seed import seed_user_language
 
 bp = Blueprint("auth", __name__)
 
@@ -50,10 +49,9 @@ def signup():
             user = User(username=username, display_name=display_name, email=email or None)
             user.set_password(password)
             db.session.add(user)
-            db.session.flush()
-            seed_user_language(user)
+            db.session.commit()
             login_user(user)
-            flash(f"Welcome, {user.display_name}! Your German tracker is ready.", "success")
+            flash(f"Welcome, {user.display_name}! Add a language to get started.", "success")
             return redirect(url_for("dashboard.index"))
 
     return render_template(

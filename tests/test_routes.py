@@ -20,7 +20,9 @@ def test_dashboard_requires_login(app, client):
     assert "/login" in r.headers["Location"]
 
 
-def test_signup_creates_account_and_seeds_german(app, client):
+def test_signup_creates_account_with_no_language_yet(app, client):
+    """New accounts start with zero languages -- they pick one from the
+    catalog themselves (onboarding / Settings), nothing is auto-seeded."""
     r = client.post(
         "/signup",
         data={
@@ -34,7 +36,40 @@ def test_signup_creates_account_and_seeds_german(app, client):
 
     created = User.query.filter_by(username="newlearner").first()
     assert created is not None
-    assert Language.query.filter_by(user_id=created.id, code="de").first() is not None
+    assert Language.query.filter_by(user_id=created.id).count() == 0
+
+    r = client.get("/dashboard")
+    assert r.status_code == 200
+    assert b"Welcome to Sprachweg" in r.data
+
+
+def test_onboarding_add_language_clones_german_template(app, client, db):
+    """From the onboarding screen, picking German from the catalog gives the
+    account a real, independent copy of German's levels/hours."""
+    from sprachweg.models import Language, Level, User
+    from sprachweg.services.language_catalog import ensure_german_template
+
+    ensure_german_template()
+    client.post(
+        "/signup",
+        data={
+            "username": "newlearner2",
+            "password": "a-decent-password",
+            "confirm_password": "a-decent-password",
+        },
+    )
+    user = User.query.filter_by(username="newlearner2").first()
+
+    r = client.post("/settings/languages", data={"template_code": "de"})
+    assert r.status_code == 302
+
+    language = Language.query.filter_by(user_id=user.id, code="de").first()
+    assert language is not None
+    assert language.name == "German"
+    levels = Level.query.filter_by(language_id=language.id).all()
+    assert {lv.code for lv in levels} == {"A1", "A2", "B1", "B2", "C1", "C2"}
+    a1 = next(lv for lv in levels if lv.code == "A1")
+    assert float(a1.target_hours) == 120.0
 
 
 def test_login_with_wrong_password_fails(app, user, client):
@@ -300,3 +335,63 @@ def test_today_daily_goal_excludes_mark_complete_backfill(app, language, auth_cl
         assert r.status_code == 200
         # the daily-goal stat line reads "0m / 1h daily goal", not 120h+
         assert b">0m <span" in r.data
+
+
+def test_admin_routes_forbidden_for_regular_user(app, auth_client):
+    r = auth_client.get("/admin/")
+    assert r.status_code == 403
+
+
+def test_admin_routes_accessible_for_admin(app, user, auth_client, db):
+    user.is_admin = True
+    db.session.commit()
+
+    r = auth_client.get("/admin/")
+    assert r.status_code == 200
+
+    r = auth_client.get("/admin/languages/new")
+    assert r.status_code == 200
+
+
+def test_admin_can_create_a_language_template(app, user, auth_client, db):
+    from sprachweg.models import Language
+
+    user.is_admin = True
+    db.session.commit()
+
+    r = auth_client.post(
+        "/admin/languages/new",
+        data={
+            "code": "fr",
+            "name": "French",
+            "native_name": "Français",
+            "flag_emoji": "🇫🇷",
+            "hours_A1": "100",
+            "hours_A2": "120",
+            "goal_level_code": "A2",
+        },
+    )
+    assert r.status_code == 302
+    template = Language.query.filter_by(user_id=None, code="fr").first()
+    assert template is not None
+    assert template.goal_level.code == "A2"
+
+
+def test_admin_can_update_any_users_streak_threshold(app, user, auth_client, db):
+    from sprachweg.models import User
+
+    admin = User(username="admintester")
+    admin.set_password("whatever-password")
+    admin.is_admin = True
+    db.session.add(admin)
+    db.session.commit()
+
+    auth_client.post("/logout")
+    auth_client.post("/login", data={"username": "admintester", "password": "whatever-password"})
+
+    r = auth_client.post(
+        f"/admin/users/{user.id}/streak-threshold", data={"streak_min_minutes": "20"}
+    )
+    assert r.status_code == 302
+    db.session.refresh(user)
+    assert user.streak_min_minutes == 20

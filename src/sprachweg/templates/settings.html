@@ -69,18 +69,21 @@
   </form>
 </div>
 
+{% if language %}
 <div class="card mt-16">
   <div class="card-title">Levels &amp; hour targets — {{ language.name }}</div>
   {% for level in levels %}
-  <div class="flex items-center gap-12 mt-8">
-    <form method="post" action="{{ url_for('settings.update_level', level_id=level.id) }}" class="flex items-center gap-12" style="flex:1;">
+  <div class="flex items-center gap-12 mt-8" style="flex-wrap: wrap; padding-bottom: 10px; border-bottom: 1px solid var(--border);">
+    <form method="post" action="{{ url_for('settings.update_level', level_id=level.id) }}" class="flex items-center gap-12" style="flex-wrap: wrap; flex: 1 1 260px;">
       {{ csrf_input() }}
-      <strong style="width:36px;">{{ level.code }}</strong>
-      <span class="text-muted" style="width:160px;">{{ level.name }}</span>
-      <input type="number" name="target_hours" value="{{ level.target_hours }}" min="1" step="1" style="max-width:120px;"> h
-      <button type="submit" class="btn btn-secondary btn-sm">Save</button>
+      <strong style="min-width:28px;">{{ level.code }}</strong>
+      <span class="text-muted" style="min-width:110px;">{{ level.name }}</span>
+      <span class="flex items-center gap-8">
+        <input type="number" name="target_hours" value="{{ level.target_hours }}" min="1" step="1" style="max-width:90px;"> h
+        <button type="submit" class="btn btn-secondary btn-sm">Save</button>
+      </span>
     </form>
-    <form method="post" action="{{ url_for('settings.mark_exam_passed', level_id=level.id) }}" style="display:inline-flex; gap:6px; align-items:center;">
+    <form method="post" action="{{ url_for('settings.mark_exam_passed', level_id=level.id) }}" class="flex items-center gap-8" style="flex-wrap: wrap;">
       {{ csrf_input() }}
       <input type="date" name="date" style="max-width:150px;">
       <button type="submit" class="btn btn-ghost btn-sm">Mark exam passed</button>
@@ -88,6 +91,7 @@
   </div>
   {% endfor %}
 </div>
+{% endif %}
 
 <div class="card mt-16">
   <div class="card-title">Activity types</div>
@@ -113,8 +117,11 @@
   </form>
 </div>
 
-<div class="card mt-16">
+<div class="card mt-16" id="languages">
   <div class="card-title">Languages</div>
+  {% if not languages %}
+  <p class="text-muted" style="font-size:13px;">You haven't added a language yet — pick one below to get started.</p>
+  {% endif %}
   {% for lang in languages %}
   <div class="flex items-center gap-12 mt-8">
     <span>{{ lang.flag_emoji }} {{ lang.name }}</span>
@@ -127,14 +134,23 @@
     {% endif %}
   </div>
   {% endfor %}
-  <form method="post" action="{{ url_for('settings.add_language') }}" class="grid grid-2 mt-16">
+
+  {% if available_templates %}
+  <form method="post" action="{{ url_for('settings.add_language') }}" class="flex gap-8 mt-16" style="flex-wrap: wrap;">
     {{ csrf_input() }}
-    <input type="text" name="code" placeholder="code (e.g. es)" maxlength="8" required>
-    <input type="text" name="name" placeholder="Name (e.g. Spanish)" required>
-    <input type="text" name="native_name" placeholder="Native name (optional)">
-    <input type="text" name="flag_emoji" placeholder="Flag emoji (optional)">
-    <button type="submit" class="btn btn-secondary" style="grid-column: 1 / -1;">Add language</button>
+    <select name="template_code" style="flex:1; min-width:180px;">
+      {% for t in available_templates %}
+      <option value="{{ t.code }}">{{ t.flag_emoji }} {{ t.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary">{{ icon('plus', size=14) }} Add language</button>
   </form>
+  {% else %}
+  <p class="text-muted mt-16" style="font-size:13px;">
+    {% if languages %}No more languages available in the catalog right now.{% else %}No languages in the catalog yet.{% endif %}
+    {% if current_user.is_admin %}<a href="{{ url_for('admin.new_language') }}">Add one as admin</a>.{% else %}Ask an admin to add one.{% endif %}
+  </p>
+  {% endif %}
 </div>
 
 <div class="card mt-16">

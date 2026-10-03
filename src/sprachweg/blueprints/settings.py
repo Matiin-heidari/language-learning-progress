@@ -15,6 +15,10 @@ from sprachweg.models import (
     today_local,
 )
 from sprachweg.services.context import get_current_language, list_activity_types
+from sprachweg.services.language_catalog import (
+    clone_template_for_user,
+    list_available_templates_for,
+)
 
 bp = Blueprint("settings", __name__)
 
@@ -41,8 +45,13 @@ def _owned_language_or_404(language_id: int) -> Language:
 def index():
     language = get_current_language()
     languages = Language.query.filter_by(user_id=current_user.id).order_by(Language.id.asc()).all()
-    levels = Level.query.filter_by(language_id=language.id).order_by(Level.sort_order).all()
+    levels = (
+        Level.query.filter_by(language_id=language.id).order_by(Level.sort_order).all()
+        if language
+        else []
+    )
     activities = list_activity_types()
+    available_templates = list_available_templates_for(current_user)
 
     return render_template(
         "settings.html",
@@ -50,6 +59,7 @@ def index():
         languages=languages,
         levels=levels,
         activities=activities,
+        available_templates=available_templates,
     )
 
 
@@ -152,22 +162,19 @@ def mark_exam_passed(level_id: int):
 
 @bp.route("/settings/languages", methods=["POST"])
 def add_language():
-    code = request.form.get("code", "").strip().lower()
-    name = request.form.get("name", "").strip()
-    native_name = request.form.get("native_name", "").strip() or name
-    flag = request.form.get("flag_emoji", "").strip() or "🏳"
-    exists = Language.query.filter_by(user_id=current_user.id, code=code).first()
-    if code and name and not exists:
-        db.session.add(
-            Language(
-                user_id=current_user.id,
-                code=code,
-                name=name,
-                native_name=native_name,
-                flag_emoji=flag,
-            )
-        )
-        db.session.commit()
+    """Activate a catalog language for the current account (clones its
+    levels + hour targets). Defining a *new* language's hours is admin-only
+    (Admin -> Language catalog) -- this just picks one that already exists.
+    """
+    template_code = request.form.get("template_code", "").strip().lower()
+    template = next(
+        (t for t in list_available_templates_for(current_user) if t.code == template_code), None
+    )
+    if template is not None:
+        clone_template_for_user(current_user, template)
+        # Straight to the now-functional dashboard -- the common case is a
+        # brand-new account adding their very first language from onboarding.
+        return redirect(url_for("dashboard.index"))
     return redirect(url_for("settings.index"))
 
 

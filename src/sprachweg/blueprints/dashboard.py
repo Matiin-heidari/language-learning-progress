@@ -17,6 +17,7 @@ from sprachweg.models import (
 )
 from sprachweg.services.context import get_current_language, set_current_language
 from sprachweg.services.heatmap import build_heatmap
+from sprachweg.services.language_catalog import list_available_templates_for
 from sprachweg.services.milestones import check_milestones
 from sprachweg.services.plans import ensure_plan_items
 from sprachweg.services.progress import compute_eta, compute_overall_progress, mark_level_complete
@@ -35,7 +36,8 @@ def _require_login():
 def index():
     language = get_current_language()
     if language is None:
-        return render_template("onboarding.html")
+        available_templates = list_available_templates_for(current_user)
+        return render_template("onboarding.html", available_templates=available_templates)
 
     progress = compute_overall_progress(language)
     eta = compute_eta(language, progress)

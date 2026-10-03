@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from sprachweg.models import MilestoneEvent
@@ -16,6 +16,13 @@ bp = Blueprint("stats", __name__)
 @login_required
 def _require_login():
     pass
+
+
+@bp.before_request
+def _require_language():
+    if get_current_language() is None:
+        return redirect(url_for("dashboard.index"))
+    return None
 
 
 @bp.route("/stats")

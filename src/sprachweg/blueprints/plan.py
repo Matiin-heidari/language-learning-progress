@@ -37,6 +37,13 @@ def _require_login():
     pass
 
 
+@bp.before_request
+def _require_language():
+    if get_current_language() is None:
+        return redirect(url_for("dashboard.index"))
+    return None
+
+
 def _owned_plan_or_404(plan_id: int) -> StudyPlan:
     """A plan belonging to the current user, or 404 -- guards every plan
     mutation route from acting on someone else's plan by id-guessing."""
