@@ -1,13 +1,16 @@
-"""Custom `flask` CLI commands: seed, seed-demo, claim-data, export, import."""
+"""Custom `flask` CLI commands: seed, seed-demo, claim-data, export, import,
+backup-db, export-all.
+"""
 
 from __future__ import annotations
 
 import json
 import random
+import sqlite3
 from datetime import timedelta
 
 import click
-from flask import Flask
+from flask import Flask, current_app
 
 from sprachweg.extensions import db
 from sprachweg.models import Language, StudySession, User, today_local
@@ -154,3 +157,60 @@ def register_cli(app: Flask) -> None:
             payload = json.load(f)
         restore_export_payload(payload, user)
         click.echo(f"Imported into '{username}' from {path}")
+
+    @app.cli.command("backup-db")
+    @click.option("--out", default=None, help="Output path (default: timestamped, in instance/).")
+    def backup_db_command(out: str | None) -> None:
+        """Full backup of *every* account in one shot: a safe, consistent
+        copy of the whole SQLite file (every user, language, session, plan --
+        not just one account). Safe to run while the app is live; uses
+        SQLite's own backup API rather than a raw file copy, so a
+        concurrent write can't corrupt it. Only works when DATABASE_URL is
+        a sqlite:/// URI (the default for this app).
+        """
+        uri = current_app.config["SQLALCHEMY_DATABASE_URI"]
+        prefix = "sqlite:///"
+        if not uri.startswith(prefix):
+            click.echo(
+                f"DATABASE_URL isn't SQLite ({uri!r}) -- "
+                "back this up with your DB's own tool instead."
+            )
+            return
+        source_path = uri[len(prefix) :]
+
+        if out is None:
+            from sprachweg.config import INSTANCE_DIR
+
+            stamp = today_local().isoformat()
+            out = str(INSTANCE_DIR / f"sprachweg-backup-{stamp}.sqlite")
+
+        source_conn = sqlite3.connect(source_path)
+        dest_conn = sqlite3.connect(out)
+        with dest_conn:
+            source_conn.backup(dest_conn)
+        source_conn.close()
+        dest_conn.close()
+        click.echo(f"Backed up the full database ({User.query.count()} user(s)) to {out}")
+
+    @app.cli.command("export-all")
+    @click.option(
+        "--out-dir", default="backups", help="Directory to write one JSON file per account into."
+    )
+    def export_all_command(out_dir: str) -> None:
+        """Export every account's data as JSON, one file per user (named
+        <username>.json). Complement to `backup-db`: slower and
+        schema-shaped rather than a raw file, but human-readable, diffable,
+        and restorable per-account with `import-data`.
+        """
+        import os
+
+        from sprachweg.blueprints.settings import build_export_payload
+
+        os.makedirs(out_dir, exist_ok=True)
+        users = User.query.order_by(User.id).all()
+        for user in users:
+            payload = build_export_payload(user)
+            path = os.path.join(out_dir, f"{user.username}.json")
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(payload, f, indent=2, default=str)
+        click.echo(f"Exported {len(users)} account(s) to {out_dir}/")
