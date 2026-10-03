@@ -42,6 +42,7 @@ def _register_login_manager() -> None:
 
 
 def _register_blueprints(app: Flask) -> None:
+    from sprachweg.blueprints.admin import bp as admin_bp
     from sprachweg.blueprints.auth import bp as auth_bp
     from sprachweg.blueprints.dashboard import bp as dashboard_bp
     from sprachweg.blueprints.log import bp as log_bp
@@ -59,10 +60,13 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(stats_bp)
     app.register_blueprint(settings_bp)
     app.register_blueprint(profile_bp)
+    app.register_blueprint(admin_bp)
 
 
 def _register_context_processors(app: Flask) -> None:
-    from sprachweg.models import today_local
+    from flask_login import current_user
+
+    from sprachweg.models import Language, today_local
 
     @app.context_processor
     def inject_globals():
@@ -70,4 +74,15 @@ def _register_context_processors(app: Flask) -> None:
             today = today_local()
         except Exception:
             today = None
-        return {"app_today": today}
+
+        # So the sidebar's language switcher works on every page, not just
+        # the ones that happen to pass `languages` explicitly. A route's own
+        # render_template(languages=...) still wins if it passes one.
+        languages = []
+        if current_user.is_authenticated:
+            languages = (
+                Language.query.filter_by(user_id=current_user.id, is_active=True)
+                .order_by(Language.id.asc())
+                .all()
+            )
+        return {"app_today": today, "languages": languages}

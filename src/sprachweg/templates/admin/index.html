@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% from "macros/icons.html" import icon %}
+{% from "macros/forms.html" import csrf_input %}
+
+{% block title %}Admin · Sprachweg{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Admin</h1>
+</div>
+
+<div class="card">
+  <div class="card-title">
+    Database backup
+  </div>
+  <p class="text-secondary" style="font-size:13px;">
+    Download a complete, consistent copy of the whole database — every account, language, session and plan — as a single SQLite file.
+  </p>
+  <a href="{{ url_for('admin.backup') }}" class="btn btn-primary mt-16">{{ icon('download', size=14) }} Download full backup</a>
+</div>
+
+<div class="card mt-16">
+  <div class="card-title">
+    Accounts &amp; streak threshold
+    <span class="text-muted" style="text-transform:none; font-weight:500;">{{ users|length }} account(s)</span>
+  </div>
+  <div style="overflow-x:auto;">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Display name</th>
+          <th>Joined</th>
+          <th>Public</th>
+          <th>Admin</th>
+          <th>Streak threshold (min)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td><a href="{{ url_for('profile.view', username=u.username) }}">@{{ u.username }}</a></td>
+          <td>{{ u.display_name }}</td>
+          <td>{{ u.created_at.strftime('%d %b %Y') }}</td>
+          <td>{{ '✓' if u.is_public else '—' }}</td>
+          <td>{{ '✓' if u.is_admin else '—' }}</td>
+          <td>
+            <form method="post" action="{{ url_for('admin.update_streak_threshold', user_id=u.id) }}" class="flex gap-8">
+              {{ csrf_input() }}
+              <input type="number" name="streak_min_minutes" value="{{ u.streak_min_minutes }}" min="1" max="240" style="max-width:90px;">
+              <button type="submit" class="btn btn-secondary btn-sm">Save</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card mt-16">
+  <div class="card-title">
+    Language catalog
+    <a href="{{ url_for('admin.new_language') }}" class="btn btn-primary btn-sm">{{ icon('plus', size=14) }} Add language</a>
+  </div>
+  {% if not templates %}
+  <p class="text-muted">No languages in the catalog yet.</p>
+  {% endif %}
+  {% for t in templates %}
+  <div class="plan-item-row">
+    <div class="plan-item-icon" style="background: var(--accent); font-size:16px;">{{ t.flag_emoji }}</div>
+    <div class="plan-item-body">
+      <div class="plan-item-title">{{ t.name }} <span class="text-muted">({{ t.code }})</span></div>
+      <div class="plan-item-meta">
+        {% for lv in t.levels|sort(attribute='sort_order') %}{{ lv.code }}: {{ '%.0f'|format(lv.target_hours) }}h{% if not loop.last %} &middot; {% endif %}{% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

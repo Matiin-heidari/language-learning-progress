@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% from "macros/forms.html" import csrf_input %}
+
+{% block title %}Add language · Admin · Sprachweg{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Add a language to the catalog</h1>
+</div>
+
+<div class="card" style="max-width: 560px;">
+  {% if error %}<p style="color:var(--critical); font-size:14px;">{{ error }}</p>{% endif %}
+  <p class="text-secondary" style="font-size:13px;">
+    Leave a level's hours blank to skip it (e.g. just A1-C1, no C2). Once created, anyone can add
+    this language to their own account from Settings — it'll show up with these hour targets,
+    editable per-account from there afterward.
+  </p>
+  <form method="post" class="mt-16">
+    {{ csrf_input() }}
+    <div class="grid grid-2">
+      <div class="field">
+        <label>Code</label>
+        <input type="text" name="code" placeholder="e.g. es" maxlength="8" required autocapitalize="off">
+      </div>
+      <div class="field">
+        <label>Name</label>
+        <input type="text" name="name" placeholder="e.g. Spanish" required>
+      </div>
+      <div class="field">
+        <label>Native name (optional)</label>
+        <input type="text" name="native_name" placeholder="e.g. Español">
+      </div>
+      <div class="field">
+        <label>Flag emoji (optional)</label>
+        <input type="text" name="flag_emoji" placeholder="🇪🇸">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Hours per CEFR level</label>
+      <div class="grid" style="grid-template-columns: repeat(3, 1fr); gap: 10px;">
+        {% for code in level_codes %}
+        <div>
+          <label style="font-weight:600;">{{ code }}</label>
+          <input type="number" name="hours_{{ code }}" min="1" step="1" placeholder="hours">
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="field mt-16">
+      <label>Goal level (what "100%" / the main progress bar targets)</label>
+      <select name="goal_level_code">
+        {% for code in level_codes %}
+        <option value="{{ code }}" {{ 'selected' if code == 'C1' }}>{{ code }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary w-full mt-16">Add to catalog</button>
+  </form>
+</div>
+{% endblock %}

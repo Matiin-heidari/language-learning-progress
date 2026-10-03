@@ -64,10 +64,19 @@ class User(UserMixin, db.Model):
     # the box; flip it in Settings to opt out.
     is_public = db.Column(db.Boolean, nullable=False, default=True)
 
+    # Admins manage the shared language catalog (which languages exist, with
+    # what per-level hour targets) and can trigger a full-database backup.
+    # Doesn't affect what they can see of other accounts' personal data.
+    is_admin = db.Column(db.Boolean, nullable=False, default=False)
+
     created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
 
     languages = db.relationship(
-        "Language", back_populates="user", cascade="all, delete-orphan", order_by="Language.id"
+        "Language",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        order_by="Language.id",
+        foreign_keys="Language.user_id",
     )
     sessions = db.relationship("StudySession", back_populates="user", cascade="all, delete-orphan")
 
@@ -86,7 +95,10 @@ class Language(db.Model):
     __table_args__ = (UniqueConstraint("user_id", "code", name="uq_language_user_code"),)
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    # NULL = a shared catalog template (admin-managed: code/name/levels/hours
+    # for a language nobody's personal account owns yet). Non-null = a real
+    # per-user language, usually cloned from a template via "add a language".
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
     code = db.Column(db.String(8), nullable=False)  # "de"
     name = db.Column(db.String(64), nullable=False)  # "German"
     native_name = db.Column(db.String(64), nullable=False)  # "Deutsch"

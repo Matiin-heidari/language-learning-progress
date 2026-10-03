@@ -6,11 +6,10 @@ from __future__ import annotations
 
 import json
 import random
-import sqlite3
 from datetime import timedelta
 
 import click
-from flask import Flask, current_app
+from flask import Flask
 
 from sprachweg.extensions import db
 from sprachweg.models import Language, StudySession, User, today_local
@@ -21,10 +20,27 @@ from sprachweg.services.context import list_activity_types
 def register_cli(app: Flask) -> None:
     @app.cli.command("seed")
     def seed_command() -> None:
-        """Create the shared global activity types (vocab, grammar, ...)."""
+        """Create the shared global catalog: activity types + the German
+        language template (hours per CEFR level)."""
+        from sprachweg.services.language_catalog import ensure_german_template
+
         activities = seed_global_activity_types()
+        ensure_german_template()
         db.session.commit()
-        click.echo(f"Seeded {len(activities)} global activity types.")
+        click.echo(f"Seeded {len(activities)} global activity types and the German template.")
+
+    @app.cli.command("promote-admin")
+    @click.option("--username", required=True)
+    def promote_admin_command(username: str) -> None:
+        """Grant admin access (manage the language catalog, download a full
+        database backup) to an existing account."""
+        user = User.query.filter_by(username=username.strip().lower()).first()
+        if user is None:
+            click.echo(f"No user '{username}'.")
+            return
+        user.is_admin = True
+        db.session.commit()
+        click.echo(f"'{username}' is now an admin.")
 
     @app.cli.command("create-user")
     @click.option("--username", required=True)
@@ -163,34 +179,17 @@ def register_cli(app: Flask) -> None:
     def backup_db_command(out: str | None) -> None:
         """Full backup of *every* account in one shot: a safe, consistent
         copy of the whole SQLite file (every user, language, session, plan --
-        not just one account). Safe to run while the app is live; uses
-        SQLite's own backup API rather than a raw file copy, so a
-        concurrent write can't corrupt it. Only works when DATABASE_URL is
-        a sqlite:/// URI (the default for this app).
+        not just one account). Safe to run while the app is live. The same
+        thing is available to admins from the web UI (Admin -> Backup).
         """
-        uri = current_app.config["SQLALCHEMY_DATABASE_URI"]
-        prefix = "sqlite:///"
-        if not uri.startswith(prefix):
-            click.echo(
-                f"DATABASE_URL isn't SQLite ({uri!r}) -- "
-                "back this up with your DB's own tool instead."
-            )
+        from sprachweg.services.backup import NotSqliteError, create_db_backup
+
+        try:
+            written_to = create_db_backup(out)
+        except NotSqliteError as e:
+            click.echo(f"DATABASE_URL isn't SQLite ({e}) -- back this up with your DB's own tool.")
             return
-        source_path = uri[len(prefix) :]
-
-        if out is None:
-            from sprachweg.config import INSTANCE_DIR
-
-            stamp = today_local().isoformat()
-            out = str(INSTANCE_DIR / f"sprachweg-backup-{stamp}.sqlite")
-
-        source_conn = sqlite3.connect(source_path)
-        dest_conn = sqlite3.connect(out)
-        with dest_conn:
-            source_conn.backup(dest_conn)
-        source_conn.close()
-        dest_conn.close()
-        click.echo(f"Backed up the full database ({User.query.count()} user(s)) to {out}")
+        click.echo(f"Backed up the full database ({User.query.count()} user(s)) to {written_to}")
 
     @app.cli.command("export-all")
     @click.option(
